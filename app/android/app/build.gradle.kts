@@ -28,10 +28,8 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        // Needle ships engine builds for these two ABIs only (no x86 emulators).
-        ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
-        }
+        // Needle ships engine builds for arm64 and armv7 only; CMakeLists skips
+        // other ABIs. Release APKs are built with --split-per-abi.
         externalNativeBuild {
             cmake {
                 arguments += "-DANDROID_STL=c++_static"
