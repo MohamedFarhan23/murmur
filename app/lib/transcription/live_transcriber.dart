@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
@@ -17,11 +18,16 @@ void _log(String Function() message) {
   if (_debug) debugPrint('MURMUR ${message()}');
 }
 
+/// A committed word and how sure the model was of it, from 0 to 1.
+typedef Word = ({String text, double probability});
+
 /// Streams microphone speech through Whistle and exposes the transcript as it
-/// forms: [committed] words are final, [pending] may still change.
+/// forms: [words] are final, [pending] may still change.
 ///
 /// A VAD keeps silence away from the model. Each pause ends the stream, which
 /// commits the phrase and keeps the engine's re-transcribed buffer short.
+/// Recording can be stopped and resumed; the transcript carries on until
+/// [clear].
 class LiveTranscriber extends ChangeNotifier {
   LiveTranscriber(this._engine) {
     _gate = SpeechGate(
@@ -40,7 +46,7 @@ class LiveTranscriber extends ChangeNotifier {
   final _mic = Mic();
   final _vad = Vad();
   late final SpeechGate _gate;
-  final _committed = <String>[];
+  final _words = <Word>[];
   final _queued = <Int16List>[];
   int _queuedSamples = 0;
   int _heardSamples = 0;
@@ -50,20 +56,33 @@ class LiveTranscriber extends ChangeNotifier {
   // Engine calls run strictly one after another on this chain.
   Future<void> _work = Future.value();
 
+  /// Microphone loudness from 0 (silence) to 1, updated with every audio chunk.
+  final level = ValueNotifier<double>(0);
+
+  /// Seconds of audio recorded since the transcript was last cleared, updated
+  /// with every audio chunk.
+  final elapsed = ValueNotifier<double>(0);
+
+  /// Called each time a phrase is finalized with at least one word.
+  VoidCallback? onPhraseFinalized;
+
   String pending = '';
   bool isRecording = false;
   Object? error;
 
-  String get committed => _committed.join(' ');
+  List<Word> get words => List.unmodifiable(_words);
+  String get text => _words.map((w) => w.text).join(' ');
+  bool get isEmpty => _words.isEmpty && pending.isEmpty;
+
+  /// Whether the VAD currently hears speech.
+  bool get isSpeaking => isRecording && _gate.inPhrase;
+
   double get seconds => _heardSamples / WhistleEngine.sampleRate;
 
-  /// Starts listening; false if the microphone permission was refused.
+  /// Starts or resumes listening; false if the microphone permission was refused.
   Future<bool> start() async {
     if (isRecording) return true;
     if (!await _mic.requestPermission()) return false;
-    _committed.clear();
-    pending = '';
-    _heardSamples = 0;
     error = null;
     _audio = (await _mic.start()).listen(_onAudio);
     isRecording = true;
@@ -75,6 +94,7 @@ class LiveTranscriber extends ChangeNotifier {
   Future<void> stop() async {
     if (!isRecording) return;
     isRecording = false;
+    level.value = 0;
     notifyListeners();
     await _audio?.cancel();
     await _mic.stop();
@@ -82,10 +102,45 @@ class LiveTranscriber extends ChangeNotifier {
     await _work;
   }
 
+  /// Empties the transcript and returns what it held, for [restore].
+  List<Word> clear() {
+    final cleared = List<Word>.of(_words);
+    _words.clear();
+    pending = '';
+    _heardSamples = 0;
+    elapsed.value = 0;
+    notifyListeners();
+    return cleared;
+  }
+
+  /// Puts back a transcript taken by [clear], ahead of anything said since.
+  void restore(List<Word> words) {
+    _words.insertAll(0, words);
+    notifyListeners();
+  }
+
   void _onAudio(Int16List pcm) {
     _heardSamples += pcm.length;
+    elapsed.value = seconds;
+    _updateLevel(pcm);
+    final wasSpeaking = _gate.inPhrase;
     _gate.add(pcm);
-    notifyListeners();
+    if (wasSpeaking != _gate.inPhrase) notifyListeners();
+  }
+
+  void _updateLevel(Int16List pcm) {
+    if (pcm.isEmpty) return;
+    var sum = 0.0;
+    for (final s in pcm) {
+      sum += s * s;
+    }
+    final rms = sqrt(sum / pcm.length) / 32768;
+    // -60 dBFS (quiet room) .. -15 dBFS (close speech) mapped to 0..1.
+    final db = 20 * log(max(rms, 1e-6)) / ln10;
+    final target = ((db + 60) / 45).clamp(0.0, 1.0);
+    // Rise fast, fall slowly, so the meter follows speech without flicker.
+    final rate = target > level.value ? 0.6 : 0.15;
+    level.value += (target - level.value) * rate;
   }
 
   void _onSpeech(Int16List audio) {
@@ -103,7 +158,11 @@ class LiveTranscriber extends ChangeNotifier {
     _phraseSamples = 0;
     _speechFrames = 0;
     if (_queuedSamples > 0) _sendQueued();
-    _work = _work.then((_) => _run(_engine.streamStop));
+    final before = _words.length;
+    _work = _work.then((_) async {
+      await _run(_engine.streamStop);
+      if (_words.length > before) onPhraseFinalized?.call();
+    });
   }
 
   void _sendQueued() {
@@ -128,13 +187,30 @@ class LiveTranscriber extends ChangeNotifier {
                 '${w['word']}@${w['probability']}'
             ],
           })}');
-      final text = result['text'] as String;
-      if (text.isNotEmpty) _committed.add(text);
+      _words.addAll(_wordsOf(result));
       pending = result['pending'] as String;
     } catch (e) {
       error = e;
     }
     notifyListeners();
+  }
+
+  static Iterable<Word> _wordsOf(NeedleResult result) {
+    final words = result['words'] as List?;
+    if (words != null && words.isNotEmpty) {
+      return [
+        for (final w in words)
+          (
+            text: (w['word'] as String).trim(),
+            probability: (w['probability'] as num).toDouble(),
+          ),
+      ];
+    }
+    // No per-word detail: treat the committed text as certain.
+    return (result['text'] as String)
+        .split(' ')
+        .where((w) => w.isNotEmpty)
+        .map((w) => (text: w, probability: 1.0));
   }
 
   String _at() => '${seconds.toStringAsFixed(2)}s';
@@ -147,6 +223,8 @@ class LiveTranscriber extends ChangeNotifier {
     _audio?.cancel();
     _mic.dispose();
     _vad.dispose();
+    level.dispose();
+    elapsed.dispose();
     super.dispose();
   }
 }
