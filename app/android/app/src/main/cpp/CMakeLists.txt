@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 3.22.1)
-project(murmur CXX)
+project(murmur C CXX)
 
+set(THIRD_PARTY ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../third_party)
 # Prebuilt Needle engine (Cactus-Compute/needle3 on Hugging Face), one folder per ABI.
-set(NEEDLE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../third_party/needle)
+set(NEEDLE_DIR ${THIRD_PARTY}/needle)
+# WebRTC voice activity detector, built from source.
+file(GLOB_RECURSE FVAD_SOURCES ${THIRD_PARTY}/libfvad/src/*.c)
 
 if(ANDROID_ABI STREQUAL "arm64-v8a")
   set(NEEDLE_PLATFORM android-arm64)
@@ -14,10 +17,12 @@ else()
   return()
 endif()
 
-# libmurmur.so is libneedle.a re-exported whole, so Dart can look up every
-# needle_* symbol with DynamicLibrary.open("libmurmur.so").
-add_library(murmur SHARED murmur.cpp)
-target_include_directories(murmur PRIVATE ${NEEDLE_DIR}/${NEEDLE_PLATFORM})
+# libmurmur.so is libneedle.a re-exported whole plus libfvad, so Dart can look
+# up every needle_* and fvad_* symbol with DynamicLibrary.open("libmurmur.so").
+add_library(murmur SHARED murmur.cpp ${FVAD_SOURCES})
+target_include_directories(murmur PRIVATE
+  ${NEEDLE_DIR}/${NEEDLE_PLATFORM}
+  ${THIRD_PARTY}/libfvad/include)
 target_link_libraries(murmur PRIVATE
   -Wl,--whole-archive ${NEEDLE_DIR}/${NEEDLE_PLATFORM}/libneedle.a -Wl,--no-whole-archive
   m)
