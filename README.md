@@ -7,7 +7,7 @@
 Speak, and watch your words appear in real time, transcribed entirely on-device by a
 17 MB speech model. No internet permission, no account, no cloud.
 
-[**Download the APK**](https://github.com/MohamedFarhan23/murmur/releases/latest) · Android 7.0+ · English
+[**Download the APK**](https://github.com/MohamedFarhan23/murmur/releases) · Android 7.0+ · English
 
 </div>
 
@@ -53,7 +53,7 @@ Permissions*: the microphone is the only thing it asks for.
 ## Install
 
 1. Download `murmur-v*-arm64.apk` from the
-   [latest release](https://github.com/MohamedFarhan23/murmur/releases/latest).
+   [releases page](https://github.com/MohamedFarhan23/murmur/releases).
 2. Open it on your phone and allow installing from your browser or file manager when asked.
 3. Tap the mic. Android asks for microphone access once.
 
