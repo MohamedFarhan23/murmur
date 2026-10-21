@@ -53,10 +53,10 @@ class WhistleEngine {
       _call('transcribe', [_transfer(pcm), language, wordTimestamps]);
 
   /// Feeds about a second of live audio; returns newly committed words and the
-  /// unconfirmed `pending` tail.
+  /// unconfirmed `pending` tail. [keywords] are words and phrases to favour.
   Future<NeedleResult> streamProcess(Float32List pcm,
-          {String language = 'en'}) =>
-      _call('streamProcess', [_transfer(pcm), language]);
+          {String language = 'en', List<String> keywords = const []}) =>
+      _call('streamProcess', [_transfer(pcm), language, keywords.join('\n')]);
 
   /// Ends the stream, committing the pending tail.
   Future<NeedleResult> streamStop() => _call('streamStop', const []);
@@ -130,8 +130,8 @@ class _Needle {
         'load' => _load(_bytes(args[0])),
         'transcribe' => _transcribe(_bytes(args[0]).buffer.asFloat32List(),
             args[1] as String, args[2] as bool),
-        'streamProcess' =>
-          _streamProcess(_bytes(args[0]).buffer.asFloat32List(), args[1] as String),
+        'streamProcess' => _streamProcess(_bytes(args[0]).buffer.asFloat32List(),
+            args[1] as String, args[2] as String),
         'streamStop' => _result(_b.streamStop(_out, _outCapacity)),
         _ => throw ArgumentError('unknown op $op'),
       };
@@ -150,24 +150,26 @@ class _Needle {
 
   NeedleResult _transcribe(
           Float32List pcm, String language, bool wordTimestamps) =>
-      _withAudio(pcm, language, (samples, count, lang) => _b.transcribe(
+      _withAudio(pcm, language, '', (samples, count, lang, _) => _b.transcribe(
           samples, count, lang, nullptr, wordTimestamps ? 1 : 0, _out, _outCapacity));
 
-  NeedleResult _streamProcess(Float32List pcm, String language) =>
-      _withAudio(pcm, language, (samples, count, lang) => _b.streamProcess(
-          samples, count, lang, nullptr, _out, _outCapacity));
+  NeedleResult _streamProcess(Float32List pcm, String language, String keywords) =>
+      _withAudio(pcm, language, keywords, (samples, count, lang, keys) =>
+          _b.streamProcess(samples, count, lang, keys, _out, _outCapacity));
 
-  NeedleResult _withAudio(Float32List pcm, String language,
-      int Function(Pointer<Float>, int, Pointer<Utf8>) call) {
+  NeedleResult _withAudio(Float32List pcm, String language, String keywords,
+      int Function(Pointer<Float>, int, Pointer<Utf8>, Pointer<Utf8>) call) {
     _reserve(pcm.length);
     final samples = malloc<Float>(max(pcm.length, 1));
     final lang = language.toNativeUtf8();
+    final keys = keywords.isEmpty ? nullptr : keywords.toNativeUtf8();
     try {
       samples.asTypedList(pcm.length).setAll(0, pcm);
-      return _result(call(samples, pcm.length, lang));
+      return _result(call(samples, pcm.length, lang, keys));
     } finally {
       malloc.free(samples);
       malloc.free(lang);
+      if (keys != nullptr) malloc.free(keys);
     }
   }
 

@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
@@ -9,7 +10,7 @@ const lowConfidence = 0.6;
 const _fadeIn = Duration(milliseconds: 280);
 
 /// The transcript: committed words fade in as they arrive, unsure words are
-/// underlined, and the pending tail is dimmed.
+/// underlined, and the pending tail is dimmed. Words can be tapped.
 class TranscriptView extends StatefulWidget {
   const TranscriptView({
     super.key,
@@ -17,12 +18,18 @@ class TranscriptView extends StatefulWidget {
     required this.pending,
     required this.placeholder,
     required this.selectable,
+    this.onWordTap,
+    this.highlighted,
   });
 
   final List<Word> words;
   final String pending;
   final String placeholder;
   final bool selectable;
+  final ValueChanged<int>? onWordTap;
+
+  /// The word whose fix sheet is open.
+  final int? highlighted;
 
   @override
   State<TranscriptView> createState() => _TranscriptViewState();
@@ -33,6 +40,7 @@ class _TranscriptViewState extends State<TranscriptView>
   final _clock = Stopwatch()..start();
   // When each word, by index, first appeared.
   final _appearedAt = <int>[];
+  final _taps = <TapGestureRecognizer>[];
   late final Ticker _ticker = createTicker((_) {
     if (_animating) {
       setState(() {});
@@ -67,8 +75,18 @@ class _TranscriptViewState extends State<TranscriptView>
     if (_animating && !_ticker.isActive) _ticker.start();
   }
 
+  TapGestureRecognizer _tap(int index) {
+    while (_taps.length <= index) {
+      _taps.add(TapGestureRecognizer());
+    }
+    return _taps[index]..onTap = () => widget.onWordTap?.call(index);
+  }
+
   @override
   void dispose() {
+    for (final tap in _taps) {
+      tap.dispose();
+    }
     _ticker.dispose();
     super.dispose();
   }
@@ -89,7 +107,23 @@ class _TranscriptViewState extends State<TranscriptView>
     final spans = <InlineSpan>[
       for (final (i, word) in widget.words.indexed)
         TextSpan(
-          text: i == 0 ? word.text : ' ${word.text}',
+          children: [
+            if (i > 0) const TextSpan(text: ' '),
+            TextSpan(
+              text: word.text,
+              recognizer: widget.onWordTap == null ? null : _tap(i),
+              style: TextStyle(
+                backgroundColor:
+                    i == widget.highlighted ? colors.primaryContainer : null,
+                decoration: word.probability < lowConfidence
+                    ? TextDecoration.underline
+                    : null,
+                decorationStyle: TextDecorationStyle.dotted,
+                decorationColor: colors.tertiary,
+                decorationThickness: 2,
+              ),
+            ),
+          ],
           style: TextStyle(
             color: colors.onSurface.withValues(
                 alpha: animate
@@ -97,12 +131,6 @@ class _TranscriptViewState extends State<TranscriptView>
                         ((now - _appearedAt[i]) / _fadeIn.inMilliseconds)
                             .clamp(0.0, 1.0))
                     : 1),
-            decoration: word.probability < lowConfidence
-                ? TextDecoration.underline
-                : null,
-            decorationStyle: TextDecorationStyle.dotted,
-            decorationColor: colors.tertiary,
-            decorationThickness: 2,
           ),
         ),
       if (widget.pending.isNotEmpty)

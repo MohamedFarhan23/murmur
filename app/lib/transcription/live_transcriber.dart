@@ -9,6 +9,7 @@ import '../audio/mic.dart';
 import '../audio/vad.dart';
 import '../engine/whistle_engine.dart';
 import 'speech_gate.dart';
+import 'vocabulary.dart';
 
 /// Logs each phrase and engine result to logcat; build with
 /// `--dart-define=MURMUR_DEBUG=true`.
@@ -29,7 +30,7 @@ typedef Word = ({String text, double probability});
 /// Recording can be stopped and resumed; the transcript carries on until
 /// [clear].
 class LiveTranscriber extends ChangeNotifier {
-  LiveTranscriber(this._engine) {
+  LiveTranscriber(this._engine, this._vocabulary) {
     _gate = SpeechGate(
       frameSamples: Vad.frameSamples,
       isSpeech: (frame) {
@@ -43,6 +44,7 @@ class LiveTranscriber extends ChangeNotifier {
   }
 
   final WhistleEngine _engine;
+  final Vocabulary _vocabulary;
   final _mic = Mic();
   final _vad = Vad();
   late final SpeechGate _gate;
@@ -113,6 +115,22 @@ class LiveTranscriber extends ChangeNotifier {
     return cleared;
   }
 
+  /// Replaces the word at [index] with the user's correction.
+  void replaceWord(int index, String text) {
+    _words[index] = (text: text, probability: 1);
+    notifyListeners();
+  }
+
+  void removeWord(int index) {
+    _words.removeAt(index);
+    notifyListeners();
+  }
+
+  void insertWord(int index, Word word) {
+    _words.insert(index, word);
+    notifyListeners();
+  }
+
   /// Puts back a transcript taken by [clear], ahead of anything said since.
   void restore(List<Word> words) {
     _words.insertAll(0, words);
@@ -174,7 +192,8 @@ class LiveTranscriber extends ChangeNotifier {
     }
     _queued.clear();
     _queuedSamples = 0;
-    _work = _work.then((_) => _run(() => _engine.streamProcess(chunk)));
+    _work = _work.then((_) => _run(() =>
+        _engine.streamProcess(chunk, keywords: _vocabulary.words)));
   }
 
   Future<void> _run(Future<NeedleResult> Function() call) async {

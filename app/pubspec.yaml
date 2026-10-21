@@ -36,6 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   ffi: ^2.2.0
   record: ^7.1.2
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:
@@ -55,6 +56,7 @@ dev_dependencies:
 flutter:
   assets:
     - assets/models/
+    - assets/words/
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

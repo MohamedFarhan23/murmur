@@ -4,27 +4,40 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../engine/whistle_engine.dart';
+import '../suggest/sounds_like.dart';
+import '../suggest/suggester.dart';
 import '../transcription/live_transcriber.dart';
+import '../transcription/vocabulary.dart';
 import 'mic_button.dart';
 import 'transcript_view.dart';
+import 'vocabulary_page.dart';
+import 'word_sheet.dart';
 
 class TranscribePage extends StatefulWidget {
-  const TranscribePage({super.key, required this.engine});
+  const TranscribePage({
+    super.key,
+    required this.engine,
+    required this.vocabulary,
+    required this.suggester,
+  });
 
   final WhistleEngine engine;
+  final Vocabulary vocabulary;
+  final Suggester suggester;
 
   @override
   State<TranscribePage> createState() => _TranscribePageState();
 }
 
 class _TranscribePageState extends State<TranscribePage> {
-  late final _transcriber = LiveTranscriber(widget.engine)
+  late final _transcriber = LiveTranscriber(widget.engine, widget.vocabulary)
     ..addListener(_onChange)
     ..onPhraseFinalized = HapticFeedback.selectionClick;
   final _scroll = ScrollController();
   bool _busy = false;
   bool _copied = false;
   Timer? _copiedReset;
+  int? _editing; // word whose fix sheet is open
 
   @override
   void dispose() {
@@ -87,6 +100,37 @@ class _TranscribePageState extends State<TranscribePage> {
       ));
   }
 
+  Future<void> _fixWord(int index) async {
+    final t = _transcriber;
+    final word = t.words[index];
+    HapticFeedback.selectionClick();
+    setState(() => _editing = index);
+    final fix = await showWordSheet(context,
+        word: word,
+        suggestions: widget.suggester
+            .suggest(word.text, custom: widget.vocabulary.words));
+    if (!mounted) return;
+    setState(() => _editing = null);
+    // The transcript may have been cleared while the sheet was open.
+    if (index >= t.words.length || t.words[index] != word) return;
+    switch (fix) {
+      case ReplaceWord(:final text, :final remember):
+        t.replaceWord(index, matchShape(word.text, text));
+        if (remember) await widget.vocabulary.add(text);
+      case RemoveWord():
+        t.removeWord(index);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(
+            content: Text('Removed “${word.text}”'),
+            action: SnackBarAction(
+                label: 'Undo', onPressed: () => t.insertWord(index, word)),
+          ));
+      case null:
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = _transcriber;
@@ -105,6 +149,15 @@ class _TranscribePageState extends State<TranscribePage> {
       appBar: AppBar(
         title: const Text('Murmur'),
         actions: [
+          IconButton(
+            tooltip: 'Custom words',
+            icon: const Icon(Icons.spellcheck_rounded),
+            onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) =>
+                        VocabularyPage(vocabulary: widget.vocabulary))),
+          ),
           AnimatedOpacity(
             opacity: t.isRecording || hasText ? 1 : 0,
             duration: const Duration(milliseconds: 200),
@@ -136,6 +189,8 @@ class _TranscribePageState extends State<TranscribePage> {
                       ? 'Start speaking…'
                       : 'Your words will appear here.',
                   selectable: !t.isRecording,
+                  onWordTap: _fixWord,
+                  highlighted: _editing,
                 ),
               ),
             ),
