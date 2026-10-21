@@ -3,12 +3,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../audio/clip_player.dart';
 import '../engine/whistle_engine.dart';
+import '../notes/draft_store.dart';
+import '../notes/note_store.dart';
 import '../suggest/sounds_like.dart';
 import '../suggest/suggester.dart';
 import '../transcription/live_transcriber.dart';
 import '../transcription/vocabulary.dart';
 import 'mic_button.dart';
+import 'note_page.dart';
+import 'notes_page.dart';
+import 'save_note_dialog.dart';
 import 'transcript_view.dart';
 import 'vocabulary_page.dart';
 import 'word_sheet.dart';
@@ -19,11 +25,15 @@ class TranscribePage extends StatefulWidget {
     required this.engine,
     required this.vocabulary,
     required this.suggester,
+    required this.notes,
+    required this.drafts,
   });
 
   final WhistleEngine engine;
   final Vocabulary vocabulary;
   final Suggester suggester;
+  final NoteStore notes;
+  final DraftStore drafts;
 
   @override
   State<TranscribePage> createState() => _TranscribePageState();
@@ -34,20 +44,43 @@ class _TranscribePageState extends State<TranscribePage> {
     ..addListener(_onChange)
     ..onPhraseFinalized = HapticFeedback.selectionClick;
   final _scroll = ScrollController();
+  final _clip = ClipPlayer();
   bool _busy = false;
   bool _copied = false;
   Timer? _copiedReset;
   int? _editing; // word whose fix sheet is open
+  int _savedRevision = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    final draft = widget.drafts.restored;
+    if (draft.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _transcriber.loadDraft(draft);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Restored the transcript you hadn’t saved')));
+    });
+  }
 
   @override
   void dispose() {
     _copiedReset?.cancel();
     _transcriber.dispose();
     _scroll.dispose();
+    _clip.dispose();
     super.dispose();
   }
 
   void _onChange() {
+    final t = _transcriber;
+    if (t.revision != _savedRevision) {
+      _savedRevision = t.revision;
+      // Keep the unsaved transcript as a text-only draft; an empty or saved
+      // one leaves no draft behind.
+      widget.drafts.save(t.dirty ? t.words : const []);
+    }
     // Follow new words only if the reader is already at the end.
     final following =
         !_scroll.hasClients || _scroll.position.extentAfter < 48;
@@ -88,27 +121,107 @@ class _TranscribePageState extends State<TranscribePage> {
         () => mounted ? setState(() => _copied = false) : null);
   }
 
-  void _clear() {
-    final cleared = _transcriber.clear();
-    HapticFeedback.lightImpact();
+  Future<void> _save() async {
+    final t = _transcriber;
+    final choice = await showSaveNoteDialog(context,
+        suggestedTitle: titleFrom(t.text),
+        audioSeconds: t.hasAudio ? t.seconds : null);
+    if (choice == null || !mounted) return;
+    final note = await widget.notes.create(
+      title: choice.title,
+      words: t.words,
+      seconds: t.seconds,
+      audio: choice.keepAudio ? t.audio : null,
+    );
+    t.clear();
+    await widget.drafts.clear();
+    HapticFeedback.mediumImpact();
+    if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(
-        content: const Text('Transcript cleared'),
-        action: SnackBarAction(
-            label: 'Undo', onPressed: () => _transcriber.restore(cleared)),
+        content: Text('Saved “${note.title}”'),
+        action: SnackBarAction(label: 'View', onPressed: () => _open(note)),
       ));
   }
+
+  /// Starts a fresh note, first offering to save unsaved changes.
+  Future<void> _newNote() async {
+    final t = _transcriber;
+    if (t.dirty) {
+      final choice = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Save this note first?'),
+          content: const Text('Starting a new note clears the current one.'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(context, 'discard'),
+                child: const Text('Discard')),
+            FilledButton(
+                onPressed: () => Navigator.pop(context, 'save'),
+                child: const Text('Save')),
+          ],
+        ),
+      );
+      if (!mounted || choice == null) return;
+      if (choice == 'save') return _save();
+    }
+    final cleared = t.clear();
+    HapticFeedback.lightImpact();
+    if (cleared.words.isEmpty) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: const Text('Started a new note'),
+        action: SnackBarAction(label: 'Undo', onPressed: () => t.restore(cleared)),
+      ));
+  }
+
+  void _open(Note note) => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => NotePage(
+              note: note,
+              store: widget.notes,
+              vocabulary: widget.vocabulary,
+              suggester: widget.suggester),
+        ),
+      );
+
+  void _openNotes() => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => NotesPage(
+              store: widget.notes,
+              vocabulary: widget.vocabulary,
+              suggester: widget.suggester),
+        ),
+      );
+
+  void _openVocabulary() => Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => VocabularyPage(vocabulary: widget.vocabulary)),
+      );
 
   Future<void> _fixWord(int index) async {
     final t = _transcriber;
     final word = t.words[index];
     HapticFeedback.selectionClick();
     setState(() => _editing = index);
-    final fix = await showWordSheet(context,
-        word: word,
-        suggestions: widget.suggester
-            .suggest(word.text, custom: widget.vocabulary.words));
+    final fix = await showWordSheet(
+      context,
+      word: word,
+      suggestions:
+          widget.suggester.suggest(word.text, custom: widget.vocabulary.words),
+      onHear: t.hasAudio && word.hasTime
+          ? () => _clip.play(t.audioBetween(word.start - 0.15, word.end + 0.15))
+          : null,
+    );
     if (!mounted) return;
     setState(() => _editing = null);
     // The transcript may have been cleared while the sheet was open.
@@ -149,20 +262,11 @@ class _TranscribePageState extends State<TranscribePage> {
       appBar: AppBar(
         title: const Text('Murmur'),
         actions: [
-          IconButton(
-            tooltip: 'Custom words',
-            icon: const Icon(Icons.spellcheck_rounded),
-            onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) =>
-                        VocabularyPage(vocabulary: widget.vocabulary))),
-          ),
           AnimatedOpacity(
             opacity: t.isRecording || hasText ? 1 : 0,
             duration: const Duration(milliseconds: 200),
             child: Padding(
-              padding: const EdgeInsets.only(right: 20),
+              padding: const EdgeInsets.only(right: 8),
               child: ValueListenableBuilder(
                 valueListenable: t.elapsed,
                 builder: (context, seconds, _) => Text(_clock(seconds),
@@ -171,6 +275,23 @@ class _TranscribePageState extends State<TranscribePage> {
                         color: t.isRecording ? colors.error : colors.outline)),
               ),
             ),
+          ),
+          IconButton(
+            tooltip: 'New note',
+            icon: const Icon(Icons.note_add_outlined),
+            onPressed: !t.isRecording && hasText ? _newNote : null,
+          ),
+          IconButton(
+            tooltip: 'Notes',
+            icon: const Icon(Icons.library_books_outlined),
+            onPressed: _openNotes,
+          ),
+          PopupMenuButton<VoidCallback>(
+            onSelected: (action) => action(),
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                  value: _openVocabulary, child: const Text('Custom words')),
+            ],
           ),
         ],
       ),
@@ -233,9 +354,9 @@ class _TranscribePageState extends State<TranscribePage> {
                       ),
                       _SideAction(
                         visible: showActions,
-                        icon: Icons.delete_outline_rounded,
-                        label: 'Clear',
-                        onPressed: _clear,
+                        icon: Icons.save_alt_rounded,
+                        label: 'Save',
+                        onPressed: _save,
                       ),
                     ],
                   ),

@@ -30,13 +30,20 @@ class SpeechGate {
   final _partial = <int>[];
   int _speechRun = 0;
   bool _inPhrase = false;
+  int _position = 0; // samples consumed so far, including dropped partials
+  int _phraseStart = 0;
 
   bool get inPhrase => _inPhrase;
+
+  /// Sample index, counted from the first [add] or [reset], where the current
+  /// or last phrase's forwarded audio begins.
+  int get phraseStart => _phraseStart;
 
   void add(Int16List pcm) {
     _partial.addAll(pcm);
     var at = 0;
     for (; at + frameSamples <= _partial.length; at += frameSamples) {
+      _position += frameSamples;
       _frame(Int16List.fromList(_partial.sublist(at, at + frameSamples)));
     }
     _partial.removeRange(0, at);
@@ -46,8 +53,15 @@ class SpeechGate {
   void flush() {
     if (_inPhrase) _endPhrase();
     _recent.clear();
+    _position += _partial.length;
     _partial.clear();
     _speechRun = 0;
+  }
+
+  /// Flushes, then counts sample positions from zero again.
+  void reset() {
+    flush();
+    _position = 0;
   }
 
   void _frame(Int16List frame) {
@@ -67,6 +81,7 @@ class SpeechGate {
     if (_recent.length > preRollFrames + startFrames) _recent.removeAt(0);
     if (_speechRun >= startFrames) {
       _inPhrase = true;
+      _phraseStart = _position - _recent.length * frameSamples;
       _recent.forEach(onSpeech);
       _recent.clear();
     }

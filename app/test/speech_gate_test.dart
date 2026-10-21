@@ -72,6 +72,30 @@ void main() {
     expect(phraseEnds, [3]);
   });
 
+  test('phraseStart is where the forwarded pre-roll begins', () {
+    gate.add(frames('......ss'));
+    // 8 frames seen; the pre-roll and speech forwarded are the last 4.
+    expect(gate.phraseStart, 4);
+  });
+
+  test('positions count dropped partial frames and restart on reset', () {
+    final gate = SpeechGate(
+      frameSamples: 2,
+      isSpeech: (frame) => frame[0] > 0,
+      onSpeech: (_) {},
+      onPhraseEnd: () {},
+      startFrames: 1,
+      preRollFrames: 0,
+    );
+    gate.add(Int16List.fromList([-1, -1, -1])); // one frame and a partial
+    gate.flush(); // the partial sample is dropped but still counted
+    gate.add(Int16List.fromList([1, 1]));
+    expect(gate.phraseStart, 3);
+    gate.reset();
+    gate.add(Int16List.fromList([1, 1]));
+    expect(gate.phraseStart, 0);
+  });
+
   test('frames split across chunks', () {
     final gate = SpeechGate(
       frameSamples: 3,

@@ -22,21 +22,26 @@ class RemoveWord extends WordFix {
 }
 
 /// Shows the fix sheet for [word]; [suggestions] resolves to words that sound
-/// like it.
+/// like it. [onHear], when given, plays the word's audio.
 Future<WordFix?> showWordSheet(BuildContext context,
-        {required Word word, required Future<List<String>> suggestions}) =>
+        {required Word word,
+        required Future<List<String>> suggestions,
+        VoidCallback? onHear}) =>
     showModalBottomSheet<WordFix>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (context) => _WordSheet(word: word, suggestions: suggestions),
+      builder: (context) =>
+          _WordSheet(word: word, suggestions: suggestions, onHear: onHear),
     );
 
 class _WordSheet extends StatefulWidget {
-  const _WordSheet({required this.word, required this.suggestions});
+  const _WordSheet(
+      {required this.word, required this.suggestions, this.onHear});
 
   final Word word;
   final Future<List<String>> suggestions;
+  final VoidCallback? onHear;
 
   @override
   State<_WordSheet> createState() => _WordSheetState();
@@ -75,7 +80,20 @@ class _WordSheetState extends State<_WordSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(widget.word.text, style: theme.textTheme.headlineMedium),
+          Row(
+            children: [
+              Expanded(
+                child: Text(widget.word.text,
+                    style: theme.textTheme.headlineMedium),
+              ),
+              if (widget.onHear case final hear?)
+                IconButton.filledTonal(
+                  tooltip: 'Hear it',
+                  onPressed: hear,
+                  icon: const Icon(Icons.volume_up_rounded),
+                ),
+            ],
+          ),
           const SizedBox(height: 4),
           Text(
             unsure

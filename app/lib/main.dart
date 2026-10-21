@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'engine/whistle_engine.dart';
+import 'notes/draft_store.dart';
+import 'notes/note_store.dart';
 import 'suggest/suggester.dart';
 import 'transcription/vocabulary.dart';
 import 'ui/transcribe_page.dart';
@@ -25,6 +27,8 @@ class _MurmurAppState extends State<MurmurApp> {
         .then((model) => WhistleEngine.start(model.buffer.asUint8List())),
     Vocabulary.load(),
     rootBundle.loadString(_wordsAsset).then(Suggester.start),
+    NoteStore.load(),
+    DraftStore.open(),
   ).wait;
 
   @override
@@ -38,9 +42,22 @@ class _MurmurAppState extends State<MurmurApp> {
         home: FutureBuilder(
           future: _ready,
           builder: (context, ready) => switch (ready) {
-            AsyncSnapshot(data: (final engine, final vocabulary, final suggester)) =>
+            AsyncSnapshot(
+              data: (
+                final engine,
+                final vocabulary,
+                final suggester,
+                final notes,
+                final drafts,
+              )
+            ) =>
               TranscribePage(
-                  engine: engine, vocabulary: vocabulary, suggester: suggester),
+                engine: engine,
+                vocabulary: vocabulary,
+                suggester: suggester,
+                notes: notes,
+                drafts: drafts,
+              ),
             AsyncSnapshot(:final error?) => Scaffold(
                 body: Center(child: Text('Murmur could not start:\n$error'))),
             _ => const Scaffold(body: Center(child: CircularProgressIndicator())),
