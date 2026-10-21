@@ -20,6 +20,9 @@ typedef NeedleResult = Map<String, dynamic>;
 class WhistleEngine {
   WhistleEngine._(this._isolate, this._commands, this._replies);
 
+  /// Whistle takes 16 kHz mono float samples in [-1, 1].
+  static const sampleRate = 16000;
+
   final Isolate _isolate;
   final SendPort _commands;
   final ReceivePort _replies;
@@ -115,7 +118,6 @@ void _workerMain(SendPort replies) {
 class _Needle {
   _Needle(this._b);
 
-  static const _sampleRate = 16000;
   // Needle's own sizing: 4 KiB of JSON per second of audio, 256 KiB minimum.
   static const _outBytesPerSecond = 4096;
   static const _minOut = 1 << 18;
@@ -170,7 +172,7 @@ class _Needle {
   }
 
   void _reserve(int samples) {
-    final needed = samples ~/ _sampleRate * _outBytesPerSecond;
+    final needed = samples ~/ WhistleEngine.sampleRate * _outBytesPerSecond;
     if (needed <= _outCapacity) return;
     calloc.free(_out);
     _out = calloc<Uint8>(needed).cast();
