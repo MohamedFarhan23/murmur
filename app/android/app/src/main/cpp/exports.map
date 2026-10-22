@@ -1,0 +1,10 @@
+/* Symbols libmurmur.so exports: Needle's and libfvad's C APIs, which Dart
+   looks up by name. Everything else stays internal, so the linker can drop
+   the parts of libneedle.a they never reach. */
+{
+  global:
+    needle_*;
+    fvad_*;
+  local:
+    *;
+};

@@ -93,7 +93,8 @@ Mic (16 kHz) ─▶ VAD (WebRTC) ─▶ Whistle streaming ─▶ words + confide
 ```sh
 git clone git@github.com:MohamedFarhan23/murmur.git && cd murmur/app
 ./tool/fetch_model.sh          # downloads whistle.cact (pinned, checksum-verified)
-flutter build apk --release --target-platform android-arm64
+flutter build apk --release --split-per-abi --target-platform android-arm64 \
+  --split-debug-info=build/symbols   # keeps Dart debug symbols out of the APK
 ```
 
 Needs the Flutter SDK (stable), the Android SDK with **NDK 28.2** and **CMake 3.22.1**,

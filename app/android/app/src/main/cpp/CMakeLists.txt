@@ -26,3 +26,9 @@ target_include_directories(murmur PRIVATE
 target_link_libraries(murmur PRIVATE
   -Wl,--whole-archive ${NEEDLE_DIR}/${NEEDLE_PLATFORM}/libneedle.a -Wl,--no-whole-archive
   m)
+# Export only the C APIs (exports.map) and drop whatever they don't reach.
+target_link_options(murmur PRIVATE
+  -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/exports.map
+  -Wl,--gc-sections)
+set_property(TARGET murmur APPEND PROPERTY LINK_DEPENDS
+  ${CMAKE_CURRENT_SOURCE_DIR}/exports.map)
