@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'brand.dart';
+
 /// The record/stop button: tap to start or stop, or hold to talk (the page
 /// decides which from [onPressDown] and [onPressUp]). While recording it morphs from a circle to a
 /// rounded square, rings ripple out from it, and a halo follows the voice
@@ -70,14 +72,13 @@ class _MicButtonState extends State<MicButton>
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final recording = widget.recording;
     final animate = !MediaQuery.disableAnimationsOf(context);
 
     return SizedBox.square(
       dimension: _size * 1.6,
       child: TweenAnimationBuilder<Color?>(
-        tween: ColorTween(end: recording ? colors.error : colors.primary),
+        tween: ColorTween(end: recording ? Brand.red : Brand.lime),
         duration: _morph,
         builder: (context, fill, _) => Stack(
           alignment: Alignment.center,
@@ -145,9 +146,7 @@ class _MicButtonState extends State<MicButton>
                             recording ? Icons.stop_rounded : Icons.mic_rounded,
                             key: ValueKey(recording),
                             size: 40,
-                            color: recording
-                                ? colors.onError
-                                : colors.onPrimary,
+                            color: Brand.ink,
                           ),
                         ),
                       ),

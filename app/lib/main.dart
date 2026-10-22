@@ -6,6 +6,7 @@ import 'notes/draft_store.dart';
 import 'notes/note_store.dart';
 import 'suggest/suggester.dart';
 import 'transcription/vocabulary.dart';
+import 'ui/brand.dart';
 import 'ui/text_size.dart';
 import 'ui/transcribe_page.dart';
 
@@ -13,16 +14,6 @@ const _modelAsset = 'assets/models/whistle.cact';
 const _wordsAsset = 'assets/words/english.txt';
 
 void main() => runApp(const MurmurApp());
-
-ThemeData _theme(Brightness brightness) => ThemeData(
-      colorSchemeSeed: Colors.teal,
-      brightness: brightness,
-      fontFamily: 'Inter',
-      pageTransitionsTheme: const PageTransitionsTheme(builders: {
-        TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
-      }),
-      snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
-    );
 
 class MurmurApp extends StatefulWidget {
   const MurmurApp({super.key});
@@ -46,8 +37,8 @@ class _MurmurAppState extends State<MurmurApp> {
   @override
   Widget build(BuildContext context) => MaterialApp(
         title: 'Murmur',
-        theme: _theme(Brightness.light),
-        darkTheme: _theme(Brightness.dark),
+        theme: Brand.theme(Brightness.light),
+        darkTheme: Brand.theme(Brightness.dark),
         home: FutureBuilder(
           future: _ready,
           builder: (context, ready) => switch (ready) {
