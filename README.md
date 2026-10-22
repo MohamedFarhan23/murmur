@@ -111,4 +111,5 @@ result to logcat.
 | [libfvad](https://github.com/dpirch/libfvad) voice activity detection | WebRTC authors, Daniel Pirch | BSD-3-Clause |
 | [SCOWL](http://wordlist.aspell.net) word list | Kevin Atkinson and contributors | [SCOWL license](app/assets/words/SCOWL-LICENSE.txt) |
 | [Inter](https://rsms.me/inter/) typeface | The Inter Project Authors | [OFL-1.1](app/assets/fonts/Inter-LICENSE.txt) |
+| [Google Sans Flex](https://github.com/googlefonts/googlesans-flex) typeface, for transcripts | The Google Sans Flex Authors | [OFL-1.1](app/assets/fonts/GoogleSansFlex-LICENSE.txt) |
 | [Flutter](https://flutter.dev), [record](https://pub.dev/packages/record) | Google, llfbandit | BSD-3-Clause |

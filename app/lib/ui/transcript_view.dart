@@ -101,6 +101,7 @@ class _TranscriptViewState extends State<TranscriptView>
     final colors = theme.colorScheme;
     final headline = theme.textTheme.headlineSmall!;
     final base = headline.copyWith(
+        fontFamily: 'Google Sans Flex',
         fontSize: headline.fontSize! * widget.scale,
         height: 1.45,
         color: colors.onSurface);
