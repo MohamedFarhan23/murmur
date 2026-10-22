@@ -5,7 +5,7 @@ set -euo pipefail
 
 APP="$(cd "$(dirname "$0")/.." && pwd)"
 RES="$APP/android/app/src/main/res"
-BACKGROUND="#0E8A80"
+BACKGROUND="#0F1012"
 
 # density: legacy icon size (48dp), adaptive layer size (108dp)
 for spec in mdpi:48:108 hdpi:72:162 xhdpi:96:216 xxhdpi:144:324 xxxhdpi:192:432; do
