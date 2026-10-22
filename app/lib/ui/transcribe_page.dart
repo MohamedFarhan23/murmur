@@ -281,6 +281,16 @@ class _TranscribePageState extends State<TranscribePage> {
             ),
           ),
           IconButton(
+            tooltip: _copied ? 'Copied' : 'Copy',
+            icon: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 160),
+              child: Icon(
+                  _copied ? Icons.check_rounded : Icons.copy_rounded,
+                  key: ValueKey(_copied)),
+            ),
+            onPressed: !t.isRecording && hasText ? _copy : null,
+          ),
+          IconButton(
             tooltip: 'New note',
             icon: const Icon(Icons.note_add_outlined),
             onPressed: !t.isRecording && hasText ? _newNote : null,
@@ -293,10 +303,6 @@ class _TranscribePageState extends State<TranscribePage> {
           PopupMenuButton<VoidCallback>(
             onSelected: (action) => action(),
             itemBuilder: (_) => [
-              PopupMenuItem(
-                  value: () => _discard('Cleared'),
-                  enabled: !t.isRecording && hasText,
-                  child: const Text('Clear')),
               PopupMenuItem(
                   value: _openVocabulary, child: const Text('Custom words')),
             ],
@@ -365,9 +371,9 @@ class _TranscribePageState extends State<TranscribePage> {
                 children: [
                   _SideAction(
                     visible: showActions,
-                    icon: _copied ? Icons.check_rounded : Icons.copy_rounded,
-                    label: _copied ? 'Copied' : 'Copy',
-                    onPressed: _copy,
+                    icon: Icons.delete_outline_rounded,
+                    label: 'Clear',
+                    onPressed: () => _discard('Cleared'),
                   ),
                   MicButton(
                     recording: t.isRecording,
@@ -396,7 +402,7 @@ class _TranscribePageState extends State<TranscribePage> {
   }
 }
 
-/// Copy and Clear, beside the mic; they appear only once there's something
+/// Clear and Save, beside the mic; they appear only once there's something
 /// to act on and recording has stopped.
 class _SideAction extends StatelessWidget {
   const _SideAction({
