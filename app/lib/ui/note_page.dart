@@ -255,7 +255,7 @@ class _NotePageState extends State<NotePage> {
                       ),
                       if (_note.words.isNotEmpty)
                         Padding(
-                          padding: const EdgeInsets.only(top: 20),
+                          padding: const EdgeInsets.only(top: 8),
                           child: TranscriptActions(
                               text: () => _note.text, subject: _note.title),
                         ),

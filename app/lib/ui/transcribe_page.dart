@@ -350,7 +350,7 @@ class _TranscribePageState extends State<TranscribePage> {
                   child: showActions
                       ? EntranceTransition(
                           child: Padding(
-                            padding: const EdgeInsets.only(top: 20),
+                            padding: const EdgeInsets.only(top: 8),
                             child: TranscriptActions(text: () => t.text),
                           ),
                         )

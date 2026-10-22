@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../platform/share.dart';
 
-/// Copy and Share, shown under a transcript.
+/// Copy and Share icons, shown under a transcript.
 class TranscriptActions extends StatefulWidget {
   const TranscriptActions({super.key, required this.text, this.subject});
 
@@ -43,23 +43,31 @@ class _TranscriptActionsState extends State<TranscriptActions> {
   }
 
   @override
-  Widget build(BuildContext context) => Wrap(
-        spacing: 8,
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.onSurfaceVariant;
+    // Quiet icons; shifted left so the first lines up with the text.
+    return Transform.translate(
+      offset: const Offset(-8, 0),
+      child: Row(
         children: [
-          FilledButton.tonalIcon(
+          IconButton(
+            tooltip: _copied ? 'Copied' : 'Copy',
+            color: color,
             onPressed: _copy,
             icon: AnimatedSwitcher(
               duration: const Duration(milliseconds: 160),
               child: Icon(_copied ? Icons.check_rounded : Icons.copy_rounded,
-                  key: ValueKey(_copied), size: 18),
+                  key: ValueKey(_copied), size: 20),
             ),
-            label: Text(_copied ? 'Copied' : 'Copy'),
           ),
-          FilledButton.tonalIcon(
+          IconButton(
+            tooltip: 'Share',
+            color: color,
             onPressed: _share,
-            icon: const Icon(Icons.share_rounded, size: 18),
-            label: const Text('Share'),
+            icon: const Icon(Icons.share_rounded, size: 20),
           ),
         ],
-      );
+      ),
+    );
+  }
 }
