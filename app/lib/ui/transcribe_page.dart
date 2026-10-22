@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../audio/chime.dart';
 import '../audio/clip_player.dart';
 import '../engine/whistle_engine.dart';
 import '../notes/draft_store.dart';
@@ -15,6 +16,7 @@ import 'mic_button.dart';
 import 'note_page.dart';
 import 'notes_page.dart';
 import 'save_note_dialog.dart';
+import 'toast.dart';
 import 'transcript_view.dart';
 import 'vocabulary_page.dart';
 import 'word_sheet.dart';
@@ -42,7 +44,14 @@ class TranscribePage extends StatefulWidget {
 class _TranscribePageState extends State<TranscribePage> {
   late final _transcriber = LiveTranscriber(widget.engine, widget.vocabulary)
     ..addListener(_onChange)
-    ..onPhraseFinalized = HapticFeedback.selectionClick;
+    ..onPhraseFinalized = HapticFeedback.selectionClick
+    ..beforeListening = (() async {
+      HapticFeedback.mediumImpact();
+      await _chime.start();
+      await Future<void>.delayed(Chime.length);
+    })
+    ..afterListening = _chime.stop;
+  final _chime = Chime();
   final _scroll = ScrollController();
   final _clip = ClipPlayer();
   bool _busy = false;
@@ -59,8 +68,7 @@ class _TranscribePageState extends State<TranscribePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _transcriber.loadDraft(draft);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Restored the transcript you hadn’t saved')));
+      showToast(context, 'Restored the transcript you hadn’t saved');
     });
   }
 
@@ -70,6 +78,7 @@ class _TranscribePageState extends State<TranscribePage> {
     _transcriber.dispose();
     _scroll.dispose();
     _clip.dispose();
+    _chime.dispose();
     super.dispose();
   }
 
@@ -101,11 +110,8 @@ class _TranscribePageState extends State<TranscribePage> {
       if (_transcriber.isRecording) {
         HapticFeedback.mediumImpact();
         await _transcriber.stop();
-      } else if (await _transcriber.start()) {
-        HapticFeedback.mediumImpact();
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Allow microphone access to start transcribing.')));
+      } else if (!await _transcriber.start() && mounted) {
+        showToast(context, 'Allow microphone access to start transcribing.');
       }
     } finally {
       _busy = false;
@@ -137,12 +143,8 @@ class _TranscribePageState extends State<TranscribePage> {
     await widget.drafts.clear();
     HapticFeedback.mediumImpact();
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text('Saved “${note.title}”'),
-        action: SnackBarAction(label: 'View', onPressed: () => _open(note)),
-      ));
+    showToast(context, 'Saved “${note.title}”',
+        actionLabel: 'View', onAction: () => _open(note));
   }
 
   /// Starts a fresh note, first offering to save unsaved changes.
@@ -173,12 +175,8 @@ class _TranscribePageState extends State<TranscribePage> {
     final cleared = t.clear();
     HapticFeedback.lightImpact();
     if (cleared.words.isEmpty) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: const Text('Started a new note'),
-        action: SnackBarAction(label: 'Undo', onPressed: () => t.restore(cleared)),
-      ));
+    showToast(context, 'Started a new note',
+        actionLabel: 'Undo', onAction: () => t.restore(cleared));
   }
 
   void _open(Note note) => Navigator.push(
@@ -233,13 +231,8 @@ class _TranscribePageState extends State<TranscribePage> {
       case RemoveWord():
         t.removeWord(index);
         if (!mounted) return;
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(
-            content: Text('Removed “${word.text}”'),
-            action: SnackBarAction(
-                label: 'Undo', onPressed: () => t.insertWord(index, word)),
-          ));
+        showToast(context, 'Removed “${word.text}”',
+            actionLabel: 'Undo', onAction: () => t.insertWord(index, word));
       case null:
     }
   }
@@ -295,76 +288,82 @@ class _TranscribePageState extends State<TranscribePage> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              controller: _scroll,
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-              child: SizedBox(
-                width: double.infinity,
-                child: TranscriptView(
-                  words: t.words,
-                  pending: t.pending,
-                  placeholder: t.isRecording
-                      ? 'Start speaking…'
-                      : 'Your words will appear here.',
-                  selectable: !t.isRecording,
-                  onWordTap: _fixWord,
-                  highlighted: _editing,
-                ),
-              ),
-            ),
+      body: SingleChildScrollView(
+        controller: _scroll,
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+        child: SizedBox(
+          width: double.infinity,
+          child: TranscriptView(
+            words: t.words,
+            pending: t.pending,
+            placeholder: t.isRecording
+                ? 'Start speaking…'
+                : 'Your words will appear here.',
+            selectable: !t.isRecording,
+            onWordTap: _fixWord,
+            highlighted: _editing,
           ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (t.error != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Text('${t.error}',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: colors.error)),
-                    ),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 200),
-                    child: Text(status,
-                        key: ValueKey(status),
-                        style: theme.textTheme.labelLarge!
-                            .copyWith(color: colors.onSurfaceVariant)),
+        ),
+      ),
+      // In the bottom bar, so toasts float above the controls.
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (t.error != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text('${t.error}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: colors.error)),
+                ),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 240),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween(
+                            begin: const Offset(0, 0.4), end: Offset.zero)
+                        .animate(animation),
+                    child: child,
                   ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _SideAction(
-                        visible: showActions,
-                        icon: _copied ? Icons.check_rounded : Icons.copy_rounded,
-                        label: _copied ? 'Copied' : 'Copy',
-                        onPressed: _copy,
-                      ),
-                      MicButton(
-                        recording: t.isRecording,
-                        speaking: t.isSpeaking,
-                        level: t.level,
-                        onPressed: _toggle,
-                      ),
-                      _SideAction(
-                        visible: showActions,
-                        icon: Icons.save_alt_rounded,
-                        label: 'Save',
-                        onPressed: _save,
-                      ),
-                    ],
+                ),
+                child: Text(status,
+                    key: ValueKey(status),
+                    style: theme.textTheme.labelLarge!
+                        .copyWith(color: colors.onSurfaceVariant)),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _SideAction(
+                    visible: showActions,
+                    icon: _copied ? Icons.check_rounded : Icons.copy_rounded,
+                    label: _copied ? 'Copied' : 'Copy',
+                    onPressed: _copy,
+                  ),
+                  MicButton(
+                    recording: t.isRecording,
+                    speaking: t.isSpeaking,
+                    level: t.level,
+                    onPressed: _toggle,
+                  ),
+                  _SideAction(
+                    visible: showActions,
+                    icon: Icons.save_alt_rounded,
+                    label: 'Save',
+                    onPressed: _save,
                   ),
                 ],
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

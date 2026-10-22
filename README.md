@@ -109,4 +109,5 @@ result to logcat.
 | [Needle](https://huggingface.co/Cactus-Compute/needle3) inference engine | Cactus Compute | Apache-2.0 |
 | [libfvad](https://github.com/dpirch/libfvad) voice activity detection | WebRTC authors, Daniel Pirch | BSD-3-Clause |
 | [SCOWL](http://wordlist.aspell.net) word list | Kevin Atkinson and contributors | [SCOWL license](app/assets/words/SCOWL-LICENSE.txt) |
+| [Inter](https://rsms.me/inter/) typeface | The Inter Project Authors | [OFL-1.1](app/assets/fonts/Inter-LICENSE.txt) |
 | [Flutter](https://flutter.dev), [record](https://pub.dev/packages/record) | Google, llfbandit | BSD-3-Clause |

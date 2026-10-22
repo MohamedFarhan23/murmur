@@ -74,6 +74,12 @@ class LiveTranscriber extends ChangeNotifier {
   /// Called each time a phrase is finalized with at least one word.
   VoidCallback? onPhraseFinalized;
 
+  /// Awaited once the microphone is allowed, just before it opens.
+  Future<void> Function()? beforeListening;
+
+  /// Called once the microphone has closed.
+  VoidCallback? afterListening;
+
   String pending = '';
   bool isRecording = false;
   Object? error;
@@ -110,6 +116,7 @@ class LiveTranscriber extends ChangeNotifier {
   Future<bool> start() async {
     if (isRecording) return true;
     if (!await _mic.requestPermission()) return false;
+    await beforeListening?.call();
     error = null;
     _audio = (await _mic.start()).listen(_onAudio);
     isRecording = true;
@@ -125,6 +132,7 @@ class LiveTranscriber extends ChangeNotifier {
     notifyListeners();
     await _audio?.cancel();
     await _mic.stop();
+    afterListening?.call();
     _gate.flush();
     await _work;
   }

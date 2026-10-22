@@ -13,6 +13,7 @@ import '../suggest/suggester.dart';
 import '../transcription/vocabulary.dart';
 import '../transcription/word.dart';
 import 'notes_page.dart';
+import 'toast.dart';
 import 'transcript_view.dart';
 import 'word_sheet.dart';
 
@@ -167,8 +168,7 @@ class _NotePageState extends State<NotePage> {
     await Clipboard.setData(ClipboardData(text: _note.text));
     HapticFeedback.lightImpact();
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Copied')));
+    showToast(context, 'Copied');
   }
 
   Future<void> _delete() async {

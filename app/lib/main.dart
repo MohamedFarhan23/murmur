@@ -13,6 +13,16 @@ const _wordsAsset = 'assets/words/english.txt';
 
 void main() => runApp(const MurmurApp());
 
+ThemeData _theme(Brightness brightness) => ThemeData(
+      colorSchemeSeed: Colors.teal,
+      brightness: brightness,
+      fontFamily: 'Inter',
+      pageTransitionsTheme: const PageTransitionsTheme(builders: {
+        TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+      }),
+      snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+    );
+
 class MurmurApp extends StatefulWidget {
   const MurmurApp({super.key});
 
@@ -34,11 +44,8 @@ class _MurmurAppState extends State<MurmurApp> {
   @override
   Widget build(BuildContext context) => MaterialApp(
         title: 'Murmur',
-        theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
-        darkTheme: ThemeData(
-            colorSchemeSeed: Colors.teal,
-            brightness: Brightness.dark,
-            useMaterial3: true),
+        theme: _theme(Brightness.light),
+        darkTheme: _theme(Brightness.dark),
         home: FutureBuilder(
           future: _ready,
           builder: (context, ready) => switch (ready) {
