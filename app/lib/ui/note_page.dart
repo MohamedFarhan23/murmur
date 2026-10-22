@@ -14,7 +14,7 @@ import '../transcription/vocabulary.dart';
 import '../transcription/word.dart';
 import 'notes_page.dart';
 import 'text_size.dart';
-import 'toast.dart';
+import 'transcript_actions.dart';
 import 'transcript_view.dart';
 import 'word_sheet.dart';
 
@@ -167,13 +167,6 @@ class _NotePageState extends State<NotePage> {
     if (mounted) setState(() {});
   }
 
-  Future<void> _copy() async {
-    await Clipboard.setData(ClipboardData(text: _note.text));
-    HapticFeedback.lightImpact();
-    if (!mounted) return;
-    showToast(context, 'Copied');
-  }
-
   Future<void> _delete() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -217,10 +210,6 @@ class _NotePageState extends State<NotePage> {
           child: Text(_note.title, overflow: TextOverflow.ellipsis),
         ),
         actions: [
-          IconButton(
-              tooltip: 'Copy',
-              onPressed: _copy,
-              icon: const Icon(Icons.copy_rounded)),
           PopupMenuButton<VoidCallback>(
             onSelected: (action) => action(),
             itemBuilder: (_) => [
@@ -249,17 +238,28 @@ class _NotePageState extends State<NotePage> {
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
                 child: SizedBox(
                   width: double.infinity,
-                  child: ValueListenableBuilder(
-                    valueListenable: widget.textSize,
-                    builder: (context, scale, _) => TranscriptView(
-                      scale: scale,
-                      words: _note.words,
-                      pending: '',
-                      placeholder: 'This note is empty.',
-                      selectable: true,
-                      onWordTap: _fixWord,
-                      highlighted: _editing ?? _speaking,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ValueListenableBuilder(
+                        valueListenable: widget.textSize,
+                        builder: (context, scale, _) => TranscriptView(
+                          scale: scale,
+                          words: _note.words,
+                          pending: '',
+                          placeholder: 'This note is empty.',
+                          selectable: true,
+                          onWordTap: _fixWord,
+                          highlighted: _editing ?? _speaking,
+                        ),
+                      ),
+                      if (_note.words.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 20),
+                          child: TranscriptActions(
+                              text: () => _note.text, subject: _note.title),
+                        ),
+                    ],
                   ),
                 ),
               ),

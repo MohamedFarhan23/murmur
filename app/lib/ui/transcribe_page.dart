@@ -13,12 +13,14 @@ import '../suggest/suggester.dart';
 import '../transcription/live_transcriber.dart';
 import '../transcription/vocabulary.dart';
 import 'mic_button.dart';
+import 'entrance.dart';
 import 'logo.dart';
 import 'note_page.dart';
 import 'notes_page.dart';
 import 'save_note_dialog.dart';
 import 'text_size.dart';
 import 'toast.dart';
+import 'transcript_actions.dart';
 import 'transcript_view.dart';
 import 'vocabulary_page.dart';
 import 'word_sheet.dart';
@@ -59,8 +61,6 @@ class _TranscribePageState extends State<TranscribePage> {
   final _scroll = ScrollController();
   final _clip = ClipPlayer();
   bool _busy = false;
-  bool _copied = false;
-  Timer? _copiedReset;
   int? _editing; // word whose fix sheet is open
   int _savedRevision = 0;
   // Hold to talk: the mic starts on press; held past _holdDelay, release stops.
@@ -84,7 +84,6 @@ class _TranscribePageState extends State<TranscribePage> {
 
   @override
   void dispose() {
-    _copiedReset?.cancel();
     _holdTimer?.cancel();
     _transcriber.dispose();
     _scroll.dispose();
@@ -144,15 +143,6 @@ class _TranscribePageState extends State<TranscribePage> {
     setState(() => _holding = false);
     await _starting;
     if (_transcriber.isRecording) await _toggle();
-  }
-
-  Future<void> _copy() async {
-    await Clipboard.setData(ClipboardData(text: _transcriber.text));
-    HapticFeedback.lightImpact();
-    _copiedReset?.cancel();
-    setState(() => _copied = true);
-    _copiedReset = Timer(const Duration(milliseconds: 1600),
-        () => mounted ? setState(() => _copied = false) : null);
   }
 
   Future<void> _save() async {
@@ -310,16 +300,6 @@ class _TranscribePageState extends State<TranscribePage> {
             ),
           ),
           IconButton(
-            tooltip: _copied ? 'Copied' : 'Copy',
-            icon: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 160),
-              child: Icon(
-                  _copied ? Icons.check_rounded : Icons.copy_rounded,
-                  key: ValueKey(_copied)),
-            ),
-            onPressed: !t.isRecording && hasText ? _copy : null,
-          ),
-          IconButton(
             tooltip: 'New note',
             icon: const Icon(Icons.note_add_outlined),
             onPressed: !t.isRecording && hasText ? _newNote : null,
@@ -345,19 +325,38 @@ class _TranscribePageState extends State<TranscribePage> {
           padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
           child: SizedBox(
             width: double.infinity,
-            child: ValueListenableBuilder(
-              valueListenable: widget.textSize,
-              builder: (context, scale, _) => TranscriptView(
-                scale: scale,
-                words: t.words,
-                pending: t.pending,
-                placeholder: t.isRecording
-                    ? 'Start speaking…'
-                    : 'Your words will appear here.',
-                selectable: !t.isRecording,
-                onWordTap: _fixWord,
-                highlighted: _editing,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ValueListenableBuilder(
+                  valueListenable: widget.textSize,
+                  builder: (context, scale, _) => TranscriptView(
+                    scale: scale,
+                    words: t.words,
+                    pending: t.pending,
+                    placeholder: t.isRecording
+                        ? 'Start speaking…'
+                        : 'Your words will appear here.',
+                    selectable: !t.isRecording,
+                    onWordTap: _fixWord,
+                    highlighted: _editing,
+                  ),
+                ),
+                // Copy and Share, once there's text and recording has stopped.
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.topLeft,
+                  child: showActions
+                      ? EntranceTransition(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 20),
+                            child: TranscriptActions(text: () => t.text),
+                          ),
+                        )
+                      : const SizedBox(width: double.infinity),
+                ),
+              ],
             ),
           ),
         ),
