@@ -8,6 +8,7 @@ import '../audio/clip_player.dart';
 import '../engine/whistle_engine.dart';
 import '../notes/draft_store.dart';
 import '../notes/note_store.dart';
+import '../platform/launch.dart';
 import '../suggest/sounds_like.dart';
 import '../suggest/suggester.dart';
 import '../transcription/live_transcriber.dart';
@@ -17,6 +18,7 @@ import 'entrance.dart';
 import 'logo.dart';
 import 'note_page.dart';
 import 'notes_page.dart';
+import 'quick_transcribe_page.dart';
 import 'save_note_dialog.dart';
 import 'text_size.dart';
 import 'toast.dart';
@@ -70,9 +72,13 @@ class _TranscribePageState extends State<TranscribePage> {
   bool _pressStartedRecording = false;
   Future<void>? _starting;
 
+  bool _quickOpen = false;
+
   @override
   void initState() {
     super.initState();
+    listenForQuickTranscribe(_openQuickIfAsked);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openQuickIfAsked());
     final draft = widget.drafts.restored;
     if (draft.isEmpty) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -201,6 +207,25 @@ class _TranscribePageState extends State<TranscribePage> {
     if (cleared.words.isEmpty) return;
     showToast(context, message,
         actionLabel: 'Undo', onAction: () => t.restore(cleared));
+  }
+
+  /// Opens quick transcribe if the home-screen widget asked for it.
+  Future<void> _openQuickIfAsked() async {
+    if (!await consumeQuickTranscribe() || _quickOpen || !mounted) return;
+    _quickOpen = true;
+    if (_transcriber.isRecording) await _transcriber.stop();
+    if (mounted) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => QuickTranscribePage(
+              engine: widget.engine,
+              vocabulary: widget.vocabulary,
+              textSize: widget.textSize),
+        ),
+      );
+    }
+    _quickOpen = false;
   }
 
   void _open(Note note) => Navigator.push(

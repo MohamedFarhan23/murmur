@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="quick_widget_label">Transcribe</string>
+    <string name="quick_widget_description">Speak, and the text is copied to your clipboard</string>
+</resources>
