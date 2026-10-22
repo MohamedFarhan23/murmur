@@ -1,10 +1,14 @@
 <!-- Pre-Android 8 launcher icon: talking lips whose sound becomes a wave, with AI sparkles. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <rect width="512" height="512" rx="112" fill="#0F1012"/>
+  <!-- Centred on the lips and wave (y 288 after the inner translate), which carry
+       the visual weight; the sparkles sit above. -->
+  <g transform="translate(256 256) scale(0.85) translate(-260 -288)">
   <g transform="translate(0 26)" fill="none" stroke="#D7FF3D" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
     <path d="M64 262 C86 240 104 214 124 212 C136 211 146 220 152 226 C158 220 168 211 180 212 C200 214 218 240 240 262 C220 304 190 320 152 320 C114 320 84 304 64 262 Z"/>
     <path d="M64 262 C110 278 196 278 240 262 Q253 238 266 262 Q279 302 292 262 Q305 198 318 262 Q331 350 344 262 Q357 190 370 262 Q383 310 396 262 Q409 234 422 262 Q435 274 448 262"/>
     <path fill="#D7FF3D" stroke="none" d="M400 88 C404 114 414 124 440 128 C414 132 404 142 400 168 C396 142 386 132 360 128 C386 124 396 114 400 88 Z"/>
     <path fill="#D7FF3D" stroke="none" d="M452 164 C453.5 173 456 175.5 465 177 C456 178.5 453.5 181 452 190 C450.5 181 448 178.5 439 177 C448 175.5 450.5 173 452 164 Z"/>
+  </g>
   </g>
 </svg>

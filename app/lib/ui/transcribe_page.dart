@@ -293,7 +293,7 @@ class _TranscribePageState extends State<TranscribePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Logo(height: 32, color: colors.onSurface),
+        title: Logo(height: 44, color: colors.onSurface),
         actions: [
           AnimatedOpacity(
             opacity: t.isRecording || hasText ? 1 : 0,

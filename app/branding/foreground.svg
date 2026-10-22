@@ -1,6 +1,7 @@
-<!-- Adaptive icon foreground: 108x108dp canvas, art inside the 66dp safe zone. -->
+<!-- Adaptive icon foreground: 108x108dp canvas, art inside the 66dp safe zone,
+     centred on the lips and wave like legacy.svg. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108">
-  <g transform="translate(54 54) scale(0.152) translate(-264 -230)">
+  <g transform="translate(54 54) scale(0.14) translate(-260 -288)">
   <g transform="translate(0 26)" fill="none" stroke="#D7FF3D" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
     <path d="M64 262 C86 240 104 214 124 212 C136 211 146 220 152 226 C158 220 168 211 180 212 C200 214 218 240 240 262 C220 304 190 320 152 320 C114 320 84 304 64 262 Z"/>
     <path d="M64 262 C110 278 196 278 240 262 Q253 238 266 262 Q279 302 292 262 Q305 198 318 262 Q331 350 344 262 Q357 190 370 262 Q383 310 396 262 Q409 234 422 262 Q435 274 448 262"/>

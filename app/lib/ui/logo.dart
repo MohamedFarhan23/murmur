@@ -23,8 +23,10 @@ class Logo extends StatelessWidget {
   }
 }
 
-// The art's extent in the SVG's 512-unit space, stroke included.
-const _bounds = Rect.fromLTRB(55, 114, 466, 355);
+// The art's extent in the SVG's 512-unit space, stroke included, padded
+// below so the box is centred on the lips and wave (y 288) rather than on
+// the art's outline: the sparkles above shouldn't push the lips down.
+const _bounds = Rect.fromLTRB(55, 114, 466, 288 + (288 - 114));
 const _stroke = 18.0;
 
 class _LogoPainter extends CustomPainter {
