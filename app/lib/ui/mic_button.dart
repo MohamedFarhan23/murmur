@@ -3,7 +3,8 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-/// The record/stop button. While recording it morphs from a circle to a
+/// The record/stop button: tap to start or stop, or hold to talk (the page
+/// decides which from [onPressDown] and [onPressUp]). While recording it morphs from a circle to a
 /// rounded square, rings ripple out from it, and a halo follows the voice
 /// level, brightening while the VAD hears speech.
 class MicButton extends StatefulWidget {
@@ -13,6 +14,8 @@ class MicButton extends StatefulWidget {
     required this.speaking,
     required this.level,
     required this.onPressed,
+    required this.onPressDown,
+    required this.onPressUp,
   });
 
   static const size = 88.0;
@@ -20,7 +23,12 @@ class MicButton extends StatefulWidget {
   final bool recording;
   final bool speaking;
   final ValueListenable<double> level;
+  /// Toggles recording; used by accessibility services.
   final VoidCallback? onPressed;
+  final VoidCallback? onPressDown;
+
+  /// Called when the press ends, whether lifted or cancelled.
+  final VoidCallback? onPressUp;
 
   @override
   State<MicButton> createState() => _MicButtonState();
@@ -105,6 +113,7 @@ class _MicButtonState extends State<MicButton>
             Semantics(
               button: true,
               label: recording ? 'Stop recording' : 'Start recording',
+              onTap: widget.onPressed,
               child: TweenAnimationBuilder<double>(
                 tween: Tween(end: recording ? 26 : _size / 2),
                 duration: _morph,
@@ -118,7 +127,9 @@ class _MicButtonState extends State<MicButton>
                     elevation: recording ? 6 : 2,
                     child: InkWell(
                       customBorder: shape,
-                      onTap: widget.onPressed,
+                      onTapDown: (_) => widget.onPressDown?.call(),
+                      onTapUp: (_) => widget.onPressUp?.call(),
+                      onTapCancel: widget.onPressUp,
                       child: SizedBox.square(
                         dimension: _size,
                         child: AnimatedSwitcher(

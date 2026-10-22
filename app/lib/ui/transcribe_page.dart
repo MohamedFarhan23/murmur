@@ -62,6 +62,12 @@ class _TranscribePageState extends State<TranscribePage> {
   Timer? _copiedReset;
   int? _editing; // word whose fix sheet is open
   int _savedRevision = 0;
+  // Hold to talk: the mic starts on press; held past _holdDelay, release stops.
+  static const _holdDelay = Duration(milliseconds: 400);
+  Timer? _holdTimer;
+  bool _holding = false;
+  bool _pressStartedRecording = false;
+  Future<void>? _starting;
 
   @override
   void initState() {
@@ -78,6 +84,7 @@ class _TranscribePageState extends State<TranscribePage> {
   @override
   void dispose() {
     _copiedReset?.cancel();
+    _holdTimer?.cancel();
     _transcriber.dispose();
     _scroll.dispose();
     _clip.dispose();
@@ -119,6 +126,23 @@ class _TranscribePageState extends State<TranscribePage> {
     } finally {
       _busy = false;
     }
+  }
+
+  void _pressDown() {
+    _pressStartedRecording = !_transcriber.isRecording;
+    if (!_pressStartedRecording) return; // a tap while recording stops it
+    // Start right away, so the first words aren't lost to the hold delay.
+    _starting = _toggle();
+    _holdTimer = Timer(_holdDelay, () => setState(() => _holding = true));
+  }
+
+  Future<void> _pressUp() async {
+    _holdTimer?.cancel();
+    if (!_pressStartedRecording) return _toggle();
+    if (!_holding) return; // a tap: keep listening
+    setState(() => _holding = false);
+    await _starting;
+    if (_transcriber.isRecording) await _toggle();
   }
 
   Future<void> _copy() async {
@@ -257,10 +281,14 @@ class _TranscribePageState extends State<TranscribePage> {
     final showActions = !t.isRecording && hasText;
 
     final status = t.isRecording
-        ? (t.isSpeaking ? 'Hearing you' : 'Listening…')
+        ? (_holding
+            ? 'Release to stop'
+            : t.isSpeaking
+                ? 'Hearing you'
+                : 'Listening…')
         : hasText
             ? 'Paused · tap to continue'
-            : 'Tap to start';
+            : 'Tap, or hold to talk';
 
     return Scaffold(
       appBar: AppBar(
@@ -380,6 +408,8 @@ class _TranscribePageState extends State<TranscribePage> {
                     speaking: t.isSpeaking,
                     level: t.level,
                     onPressed: _toggle,
+                    onPressDown: _pressDown,
+                    onPressUp: _pressUp,
                   ),
                   _SideAction(
                     visible: showActions,
