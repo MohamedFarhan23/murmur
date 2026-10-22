@@ -13,6 +13,7 @@ import '../suggest/suggester.dart';
 import '../transcription/vocabulary.dart';
 import '../transcription/word.dart';
 import 'notes_page.dart';
+import 'text_size.dart';
 import 'toast.dart';
 import 'transcript_view.dart';
 import 'word_sheet.dart';
@@ -26,12 +27,14 @@ class NotePage extends StatefulWidget {
     required this.store,
     required this.vocabulary,
     required this.suggester,
+    required this.textSize,
   });
 
   final Note note;
   final NoteStore store;
   final Vocabulary vocabulary;
   final Suggester suggester;
+  final TextSize textSize;
 
   @override
   State<NotePage> createState() => _NotePageState();
@@ -240,17 +243,24 @@ class _NotePageState extends State<NotePage> {
             ),
           ),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-              child: SizedBox(
-                width: double.infinity,
-                child: TranscriptView(
-                  words: _note.words,
-                  pending: '',
-                  placeholder: 'This note is empty.',
-                  selectable: true,
-                  onWordTap: _fixWord,
-                  highlighted: _editing ?? _speaking,
+            child: PinchToResize(
+              size: widget.textSize,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ValueListenableBuilder(
+                    valueListenable: widget.textSize,
+                    builder: (context, scale, _) => TranscriptView(
+                      scale: scale,
+                      words: _note.words,
+                      pending: '',
+                      placeholder: 'This note is empty.',
+                      selectable: true,
+                      onWordTap: _fixWord,
+                      highlighted: _editing ?? _speaking,
+                    ),
+                  ),
                 ),
               ),
             ),

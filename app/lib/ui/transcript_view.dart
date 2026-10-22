@@ -20,6 +20,7 @@ class TranscriptView extends StatefulWidget {
     required this.selectable,
     this.onWordTap,
     this.highlighted,
+    this.scale = 1,
   });
 
   final List<Word> words;
@@ -30,6 +31,9 @@ class TranscriptView extends StatefulWidget {
 
   /// The word whose fix sheet is open.
   final int? highlighted;
+
+  /// Text size, as a multiple of the default; see TextSize.
+  final double scale;
 
   @override
   State<TranscriptView> createState() => _TranscriptViewState();
@@ -95,8 +99,11 @@ class _TranscriptViewState extends State<TranscriptView>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final base = theme.textTheme.headlineSmall!
-        .copyWith(height: 1.45, color: colors.onSurface);
+    final headline = theme.textTheme.headlineSmall!;
+    final base = headline.copyWith(
+        fontSize: headline.fontSize! * widget.scale,
+        height: 1.45,
+        color: colors.onSurface);
     final animate = !MediaQuery.disableAnimationsOf(context);
     final now = _clock.elapsedMilliseconds;
 

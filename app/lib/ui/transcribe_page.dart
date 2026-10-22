@@ -16,6 +16,7 @@ import 'mic_button.dart';
 import 'note_page.dart';
 import 'notes_page.dart';
 import 'save_note_dialog.dart';
+import 'text_size.dart';
 import 'toast.dart';
 import 'transcript_view.dart';
 import 'vocabulary_page.dart';
@@ -29,6 +30,7 @@ class TranscribePage extends StatefulWidget {
     required this.suggester,
     required this.notes,
     required this.drafts,
+    required this.textSize,
   });
 
   final WhistleEngine engine;
@@ -36,6 +38,7 @@ class TranscribePage extends StatefulWidget {
   final Suggester suggester;
   final NoteStore notes;
   final DraftStore drafts;
+  final TextSize textSize;
 
   @override
   State<TranscribePage> createState() => _TranscribePageState();
@@ -172,10 +175,16 @@ class _TranscribePageState extends State<TranscribePage> {
       if (!mounted || choice == null) return;
       if (choice == 'save') return _save();
     }
+    _discard('Started a new note');
+  }
+
+  /// Empties the transcript and its audio without saving, offering Undo.
+  void _discard(String message) {
+    final t = _transcriber;
     final cleared = t.clear();
     HapticFeedback.lightImpact();
     if (cleared.words.isEmpty) return;
-    showToast(context, 'Started a new note',
+    showToast(context, message,
         actionLabel: 'Undo', onAction: () => t.restore(cleared));
   }
 
@@ -186,7 +195,8 @@ class _TranscribePageState extends State<TranscribePage> {
               note: note,
               store: widget.notes,
               vocabulary: widget.vocabulary,
-              suggester: widget.suggester),
+              suggester: widget.suggester,
+              textSize: widget.textSize),
         ),
       );
 
@@ -196,7 +206,8 @@ class _TranscribePageState extends State<TranscribePage> {
           builder: (_) => NotesPage(
               store: widget.notes,
               vocabulary: widget.vocabulary,
-              suggester: widget.suggester),
+              suggester: widget.suggester,
+              textSize: widget.textSize),
         ),
       );
 
@@ -283,25 +294,36 @@ class _TranscribePageState extends State<TranscribePage> {
             onSelected: (action) => action(),
             itemBuilder: (_) => [
               PopupMenuItem(
+                  value: () => _discard('Cleared'),
+                  enabled: !t.isRecording && hasText,
+                  child: const Text('Clear')),
+              PopupMenuItem(
                   value: _openVocabulary, child: const Text('Custom words')),
             ],
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        controller: _scroll,
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-        child: SizedBox(
-          width: double.infinity,
-          child: TranscriptView(
-            words: t.words,
-            pending: t.pending,
-            placeholder: t.isRecording
-                ? 'Start speaking…'
-                : 'Your words will appear here.',
-            selectable: !t.isRecording,
-            onWordTap: _fixWord,
-            highlighted: _editing,
+      body: PinchToResize(
+        size: widget.textSize,
+        child: SingleChildScrollView(
+          controller: _scroll,
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          child: SizedBox(
+            width: double.infinity,
+            child: ValueListenableBuilder(
+              valueListenable: widget.textSize,
+              builder: (context, scale, _) => TranscriptView(
+                scale: scale,
+                words: t.words,
+                pending: t.pending,
+                placeholder: t.isRecording
+                    ? 'Start speaking…'
+                    : 'Your words will appear here.',
+                selectable: !t.isRecording,
+                onWordTap: _fixWord,
+                highlighted: _editing,
+              ),
+            ),
           ),
         ),
       ),

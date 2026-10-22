@@ -6,6 +6,7 @@ import 'notes/draft_store.dart';
 import 'notes/note_store.dart';
 import 'suggest/suggester.dart';
 import 'transcription/vocabulary.dart';
+import 'ui/text_size.dart';
 import 'ui/transcribe_page.dart';
 
 const _modelAsset = 'assets/models/whistle.cact';
@@ -39,6 +40,7 @@ class _MurmurAppState extends State<MurmurApp> {
     rootBundle.loadString(_wordsAsset).then(Suggester.start),
     NoteStore.load(),
     DraftStore.open(),
+    TextSize.load(),
   ).wait;
 
   @override
@@ -56,6 +58,7 @@ class _MurmurAppState extends State<MurmurApp> {
                 final suggester,
                 final notes,
                 final drafts,
+                final textSize,
               )
             ) =>
               TranscribePage(
@@ -64,6 +67,7 @@ class _MurmurAppState extends State<MurmurApp> {
                 suggester: suggester,
                 notes: notes,
                 drafts: drafts,
+                textSize: textSize,
               ),
             AsyncSnapshot(:final error?) => Scaffold(
                 body: Center(child: Text('Murmur could not start:\n$error'))),

@@ -6,6 +6,7 @@ import '../suggest/suggester.dart';
 import '../transcription/vocabulary.dart';
 import 'entrance.dart';
 import 'note_page.dart';
+import 'text_size.dart';
 import 'toast.dart';
 
 /// Saved notes, newest first. Long-press a note to select several, then copy
@@ -16,11 +17,13 @@ class NotesPage extends StatefulWidget {
     required this.store,
     required this.vocabulary,
     required this.suggester,
+    required this.textSize,
   });
 
   final NoteStore store;
   final Vocabulary vocabulary;
   final Suggester suggester;
+  final TextSize textSize;
 
   @override
   State<NotesPage> createState() => _NotesPageState();
@@ -49,7 +52,8 @@ class _NotesPageState extends State<NotesPage> {
               note: note,
               store: widget.store,
               vocabulary: widget.vocabulary,
-              suggester: widget.suggester),
+              suggester: widget.suggester,
+              textSize: widget.textSize),
         ),
       );
 
