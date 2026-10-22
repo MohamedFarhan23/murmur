@@ -13,6 +13,7 @@ import '../suggest/suggester.dart';
 import '../transcription/live_transcriber.dart';
 import '../transcription/vocabulary.dart';
 import 'mic_button.dart';
+import 'logo.dart';
 import 'note_page.dart';
 import 'notes_page.dart';
 import 'save_note_dialog.dart';
@@ -292,7 +293,7 @@ class _TranscribePageState extends State<TranscribePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Murmur'),
+        title: Logo(height: 32, color: colors.onSurface),
         actions: [
           AnimatedOpacity(
             opacity: t.isRecording || hasText ? 1 : 0,
@@ -401,6 +402,7 @@ class _TranscribePageState extends State<TranscribePage> {
                     visible: showActions,
                     icon: Icons.delete_outline_rounded,
                     label: 'Clear',
+                    destructive: true,
                     onPressed: () => _discard('Cleared'),
                   ),
                   MicButton(
@@ -440,12 +442,16 @@ class _SideAction extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onPressed,
+    this.destructive = false,
   });
 
   final bool visible;
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
+
+  /// Tinted red, for actions that throw something away.
+  final bool destructive;
 
   @override
   Widget build(BuildContext context) {
@@ -466,6 +472,12 @@ class _SideAction extends StatelessWidget {
               children: [
                 IconButton.filledTonal(
                   onPressed: onPressed,
+                  style: destructive
+                      ? IconButton.styleFrom(
+                          backgroundColor:
+                              theme.colorScheme.error.withValues(alpha: 0.16),
+                          foregroundColor: theme.colorScheme.error)
+                      : null,
                   iconSize: 26,
                   padding: const EdgeInsets.all(14),
                   icon: AnimatedSwitcher(
