@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎙️ Murmur
+<img src="docs/murmur-lockup-dark.png" alt="Murmur" width="600">
 
 **Live transcription that never leaves your phone.**
 
