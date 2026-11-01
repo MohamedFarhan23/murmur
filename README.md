@@ -113,3 +113,8 @@ result to logcat.
 | [Inter](https://rsms.me/inter/) typeface | The Inter Project Authors | [OFL-1.1](app/assets/fonts/Inter-LICENSE.txt) |
 | [Google Sans Flex](https://github.com/googlefonts/googlesans-flex) typeface, for transcripts | The Google Sans Flex Authors | [OFL-1.1](app/assets/fonts/GoogleSansFlex-LICENSE.txt) |
 | [Flutter](https://flutter.dev), [record](https://pub.dev/packages/record) | Google, llfbandit | BSD-3-Clause |
+
+## License
+
+Murmur is released under the [MIT License](LICENSE). The components above keep their
+own licenses.
