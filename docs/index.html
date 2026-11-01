@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Murmur: offline voice to text</title>
+<meta name="description" content="Live speech-to-text for Android that runs entirely on your phone. No internet permission, no accounts, no tracking. Open source.">
+<meta name="theme-color" content="#110E1C">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Murmur: your voice, transcribed on your phone">
+<meta property="og:description" content="Live speech-to-text for Android that never leaves your phone. No internet permission. Open source.">
+<meta property="og:url" content="https://mohamedfarhan23.github.io/murmur/">
+<meta property="og:image" content="https://mohamedfarhan23.github.io/murmur/murmur-lockup-dark.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%23110E1C'/%3E%3Cg fill='none' stroke='%23A78BFA' stroke-width='22' stroke-linecap='round' stroke-linejoin='round' transform='translate(-2 -40) scale(1.02)'%3E%3Cpath stroke='%23ECE8F6' d='M95 299 C111 283.5 124 265 138 263.5 C146.5 262.5 153.5 269 158 273.5 C162.5 269 169.5 262.5 178 263.5 C192 265 205 283.5 221 299 C206.5 329 185 340.5 158 340.5 C131 340.5 109.5 329 95 299 Z'/%3E%3Cpath d='M95 299 C128 310.5 189.5 310.5 221 299 C227 297 229 287.5 235 287.5 C246.8 287.5 246.8 316.5 258.5 316.5 C270.5 316.5 270.5 269 282.5 269 C295.2 269 295.2 339.5 308 339.5 C320 339.5 320 265 332 265 C344 265 344 320.5 356 320.5 C368 320.5 368 285.5 380 285.5 C392 285.5 392 304 404 304 C411 304 411 298.5 418 298.5'/%3E%3Cpath fill='%23A78BFA' stroke='none' d='M364.8 165.8 C368.4 190 377.8 199.3 402 203 C377.8 206.7 368.4 216 364.8 240.2 C361.1 216 351.8 206.7 327.5 203 C351.8 199.3 361.1 190 364.8 165.8 Z'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #110E1C;
+    --ink-2: #181428;
+    --ink-3: #221d36;
+    --line: rgba(236, 232, 246, 0.09);
+    --line-2: rgba(236, 232, 246, 0.16);
+    --mist: #ECE8F6;
+    --muted: #A9A3BD;
+    --faint: #6f6987;
+    --violet: #A78BFA;
+    --violet-deep: #7C5CF0;
+    --red: #FF5A4F;
+    --radius: 22px;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--ink); color: var(--mist);
+    font: 16px/1.6 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+  h1, h2, h3 { font-family: Outfit, Inter, sans-serif; letter-spacing: -0.02em; margin: 0; }
+
+  /* Background glow */
+  .glow {
+    position: absolute; inset: -20% -10% auto; height: 900px; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(600px 400px at 72% 30%, rgba(167, 139, 250, 0.22), transparent 70%),
+      radial-gradient(500px 360px at 18% 10%, rgba(124, 92, 240, 0.14), transparent 70%);
+  }
+  .grid-bg {
+    position: absolute; inset: 0; height: 900px; z-index: 0; pointer-events: none;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 20%, #000 30%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 20%, #000 30%, transparent 75%);
+  }
+
+  /* Nav */
+  nav {
+    position: sticky; top: 0; z-index: 20;
+    backdrop-filter: blur(14px) saturate(140%); -webkit-backdrop-filter: blur(14px) saturate(140%);
+    background: rgba(17, 14, 28, 0.6); border-bottom: 1px solid var(--line);
+  }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 68px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-family: Outfit, sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.01em; }
+  .brand svg { width: 46px; height: auto; }
+  .nav-links { display: flex; align-items: center; gap: 28px; font-size: 15px; color: var(--muted); }
+  .nav-links a:hover { color: var(--mist); }
+  .nav-links .hide-sm { transition: color .2s; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px; height: 48px; padding: 0 22px;
+    border-radius: 999px; font-weight: 600; font-size: 15px; transition: transform .2s, background .2s, box-shadow .2s;
+    white-space: nowrap;
+  }
+  .btn svg { width: 18px; height: 18px; }
+  .btn-primary { background: var(--violet); color: var(--ink); box-shadow: 0 10px 40px -10px rgba(167, 139, 250, 0.7); }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 16px 50px -12px rgba(167, 139, 250, 0.9); }
+  .btn-ghost { border: 1px solid var(--line-2); color: var(--mist); background: rgba(236, 232, 246, 0.03); }
+  .btn-ghost:hover { background: rgba(236, 232, 246, 0.08); transform: translateY(-2px); }
+  .btn-sm { height: 40px; padding: 0 18px; font-size: 14px; }
+
+  /* Hero */
+  header { position: relative; }
+  .hero { position: relative; z-index: 1; display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 56px; align-items: center; padding: 88px 0 96px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 8px; border-radius: 999px;
+    border: 1px solid var(--line-2); background: rgba(167, 139, 250, 0.08); color: var(--mist); font-size: 13.5px; font-weight: 500;
+  }
+  .pill b { background: var(--violet); color: var(--ink); border-radius: 999px; padding: 2px 9px; font-size: 12px; font-weight: 700; }
+  .hero h1 { font-size: clamp(44px, 6.4vw, 80px); line-height: 1.02; font-weight: 700; margin: 24px 0 22px; }
+  .grad {
+    background: linear-gradient(100deg, #C9B8FF 0%, var(--violet) 45%, #E9E3FF 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p.lead { font-size: 19px; color: var(--muted); max-width: 540px; margin: 0 0 34px; }
+  .hero .ctas { display: flex; flex-wrap: wrap; gap: 14px; }
+  .hero .meta { margin-top: 22px; font-size: 13.5px; color: var(--faint); display: flex; gap: 18px; flex-wrap: wrap; }
+  .hero .meta span::before { content: "✓"; color: var(--violet); margin-right: 6px; font-weight: 700; }
+
+  /* Phone mockup */
+  .phone-stage { position: relative; display: flex; justify-content: center; }
+  .phone {
+    position: relative; width: 320px; height: 650px; border-radius: 48px; padding: 12px;
+    background: linear-gradient(145deg, #2c2642, #15111f);
+    box-shadow: 0 60px 120px -30px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,0.08) inset, 0 30px 80px -20px rgba(167,139,250,0.35);
+    transform: rotate(-2deg);
+  }
+  .screen {
+    position: relative; height: 100%; border-radius: 38px; background: var(--ink); overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .screen .status { display: flex; justify-content: space-between; padding: 14px 22px 0; font-size: 12px; font-weight: 600; color: var(--mist); }
+  .screen .notch { position: absolute; top: 12px; left: 50%; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%; background: #000; }
+  .screen .topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 4px; }
+  .screen .topbar svg.mark { width: 52px; }
+  .screen .timer { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .transcript { flex: 1; min-height: 0; overflow: hidden; padding: 14px 22px; font-size: 21px; line-height: 1.45; color: var(--mist); }
+  .transcript .w { opacity: 0; display: inline; transition: opacity .25s, color .25s; }
+  .transcript .w.on { opacity: 1; }
+  .transcript .w.pending { color: var(--faint); }
+  .transcript .w.unsure { text-decoration: underline dotted #E9C46A; text-underline-offset: 5px; text-decoration-thickness: 2px; }
+  .transcript .caret { display: inline-block; width: 2px; height: 22px; background: var(--violet); vertical-align: -3px; margin-left: 3px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .screen .bottom { padding: 8px 0 34px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .screen .hint { font-size: 13px; color: var(--muted); }
+  .mic-wrap { position: relative; width: 84px; height: 84px; }
+  .mic {
+    position: relative; z-index: 2; width: 84px; height: 84px; border-radius: 50%; background: var(--red);
+    display: grid; place-items: center; box-shadow: 0 10px 30px -6px rgba(255, 90, 79, 0.55);
+  }
+  .mic svg { width: 34px; height: 34px; }
+  .ripple { position: absolute; inset: 0; border-radius: 50%; background: rgba(255, 90, 79, 0.35); animation: ripple 2s ease-out infinite; }
+  .ripple.r2 { animation-delay: 1s; }
+  @keyframes ripple { from { transform: scale(1); opacity: .7; } to { transform: scale(1.9); opacity: 0; } }
+  .bars { display: flex; gap: 4px; align-items: center; height: 26px; }
+  .bars i { width: 4px; border-radius: 4px; background: var(--violet); animation: bar 1.1s ease-in-out infinite; }
+  .bars i:nth-child(2n) { animation-delay: -.3s; } .bars i:nth-child(3n) { animation-delay: -.6s; } .bars i:nth-child(5n) { animation-delay: -.85s; }
+  @keyframes bar { 0%,100% { height: 5px; } 50% { height: 24px; } }
+
+  .float-card {
+    position: absolute; z-index: 3; background: rgba(34, 29, 54, 0.82); border: 1px solid var(--line-2);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-radius: 16px; padding: 12px 16px; font-size: 13.5px; box-shadow: 0 20px 50px -20px rgba(0,0,0,.7);
+  }
+  .float-card small { display: block; color: var(--muted); font-size: 12px; margin-bottom: 2px; }
+  .fc-1 { top: 70px; left: -10px; animation: float 6s ease-in-out infinite; }
+  .fc-2 { bottom: 120px; right: -14px; animation: float 6s ease-in-out -3s infinite; }
+  .fc-1 strong { color: var(--violet); font-size: 20px; font-family: Outfit; }
+  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+  /* Stats */
+  .stats { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: var(--radius); background: rgba(24, 20, 40, 0.6); }
+  .stat { padding: 28px 26px; border-left: 1px solid var(--line); }
+  .stat:first-child { border-left: 0; }
+  .stat .n { font-family: Outfit; font-size: 40px; font-weight: 700; line-height: 1; letter-spacing: -0.03em; }
+  .stat .n em { font-style: normal; color: var(--violet); font-size: 22px; margin-left: 4px; }
+  .stat .l { color: var(--muted); font-size: 14px; margin-top: 8px; }
+
+  section { padding: 120px 0 0; position: relative; }
+  .eyebrow { color: var(--violet); font-weight: 600; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; }
+  .sec-head { max-width: 640px; margin-bottom: 48px; }
+  .sec-head h2 { font-size: clamp(32px, 4.4vw, 50px); line-height: 1.08; margin: 14px 0 16px; }
+  .sec-head p { color: var(--muted); font-size: 18px; margin: 0; }
+
+  /* Bento */
+  .bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 18px; }
+  .card {
+    position: relative; overflow: hidden; border-radius: var(--radius); padding: 28px;
+    background: linear-gradient(180deg, rgba(34, 29, 54, 0.75), rgba(24, 20, 40, 0.75));
+    border: 1px solid var(--line); transition: border-color .3s, transform .3s;
+  }
+  .card:hover { border-color: rgba(167, 139, 250, 0.4); transform: translateY(-3px); }
+  .card h3 { font-size: 21px; margin: 18px 0 8px; }
+  .card p { color: var(--muted); margin: 0; font-size: 15px; }
+  .ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: rgba(167, 139, 250, 0.12); color: var(--violet); }
+  .ic svg { width: 22px; height: 22px; }
+  .c-3 { grid-column: span 3; } .c-2 { grid-column: span 2; } .c-4 { grid-column: span 4; }
+
+  .demo-words { margin-top: 22px; font-size: 20px; line-height: 1.5; }
+  .demo-words .u { text-decoration: underline dotted #E9C46A; text-underline-offset: 5px; text-decoration-thickness: 2px; }
+  .sheet { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line-2); font-size: 14px; color: var(--mist); }
+  .chip.sel { background: var(--violet); color: var(--ink); border-color: var(--violet); font-weight: 600; }
+  .chip.play { display: inline-flex; align-items: center; gap: 6px; }
+  .chip.play svg { width: 12px; height: 12px; }
+
+  .widget-demo { margin-top: 24px; display: inline-flex; align-items: center; gap: 12px; padding: 8px 20px 8px 8px; border-radius: 999px; background: var(--ink); border: 1px solid var(--line-2); font-weight: 600; }
+  .widget-demo .dot { width: 40px; height: 40px; border-radius: 50%; background: var(--violet); display: grid; place-items: center; }
+  .widget-demo .dot svg { width: 20px; height: 20px; }
+
+  .words-cloud { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .words-cloud span { padding: 5px 12px; border-radius: 10px; background: rgba(167, 139, 250, 0.1); color: #D6CBFF; font-size: 14px; font-weight: 500; }
+
+  /* Privacy */
+  .privacy {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; padding: 56px;
+    border-radius: 32px; border: 1px solid var(--line);
+    background: radial-gradient(500px 300px at 85% 20%, rgba(167,139,250,.16), transparent 70%), var(--ink-2);
+  }
+  .privacy h2 { font-size: clamp(32px, 4vw, 46px); line-height: 1.08; margin: 14px 0 16px; }
+  .privacy p { color: var(--muted); font-size: 17px; }
+  .checks { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+  .checks li { display: flex; gap: 14px; align-items: flex-start; padding: 16px 18px; border-radius: 16px; background: rgba(17, 14, 28, 0.7); border: 1px solid var(--line); }
+  .checks li svg { flex: none; width: 22px; height: 22px; color: var(--violet); margin-top: 1px; }
+  .checks b { display: block; font-weight: 600; }
+  .checks span { color: var(--muted); font-size: 14.5px; }
+  .text-link { color: var(--violet); font-weight: 600; display: inline-flex; gap: 6px; align-items: center; }
+  .text-link:hover { text-decoration: underline; }
+
+  /* Pipeline */
+  .pipeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; counter-reset: step; }
+  .step { position: relative; padding: 26px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--ink-2); }
+  .step::before { counter-increment: step; content: "0" counter(step); font-family: Outfit; font-weight: 700; color: var(--violet); font-size: 14px; letter-spacing: .1em; }
+  .step h3 { font-size: 19px; margin: 12px 0 8px; }
+  .step p { color: var(--muted); margin: 0; font-size: 14.5px; }
+  .step:not(:last-child)::after {
+    content: ""; position: absolute; top: 50%; right: -14px; width: 10px; height: 10px; z-index: 2;
+    border-top: 2px solid var(--violet); border-right: 2px solid var(--violet); transform: translateY(-50%) rotate(45deg); opacity: .7;
+  }
+
+  /* Honest */
+  .honest { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .honest .card h3 { margin-top: 0; }
+
+  /* CTA */
+  .cta {
+    margin: 120px 0 0; text-align: center; padding: 80px 24px; border-radius: 32px; position: relative; overflow: hidden;
+    background: radial-gradient(600px 300px at 50% 0%, rgba(167,139,250,.28), transparent 70%), var(--ink-2);
+    border: 1px solid var(--line);
+  }
+  .cta svg.mark { width: 120px; margin-bottom: 22px; }
+  .cta h2 { font-size: clamp(34px, 5vw, 58px); line-height: 1.05; margin-bottom: 16px; }
+  .cta p { color: var(--muted); font-size: 18px; margin: 0 auto 32px; max-width: 520px; }
+  .cta .ctas { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+
+  footer { margin-top: 80px; border-top: 1px solid var(--line); padding: 40px 0 56px; color: var(--faint); font-size: 14px; }
+  footer .wrap { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+  footer a { color: var(--muted); } footer a:hover { color: var(--mist); }
+  footer .links { display: flex; gap: 22px; flex-wrap: wrap; }
+
+  /* Reveal */
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity .8s cubic-bezier(.2,.7,.2,1), transform .8s cubic-bezier(.2,.7,.2,1); }
+  .reveal.in { opacity: 1; transform: none; }
+
+  @media (max-width: 980px) {
+    .hero { grid-template-columns: 1fr; padding: 40px 0 72px; gap: 64px; text-align: left; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .stat:nth-child(3) { border-left: 0; }
+    .stat:nth-child(n+3) { border-top: 1px solid var(--line); }
+    .bento { grid-template-columns: 1fr 1fr; }
+    .c-3, .c-2, .c-4 { grid-column: span 1; }
+    .bento .wide { grid-column: span 2; }
+    .privacy { grid-template-columns: 1fr; padding: 36px 28px; }
+    .pipeline { grid-template-columns: 1fr 1fr; }
+    .step:nth-child(2)::after { display: none; }
+    .honest { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .wrap { padding: 0 16px; }
+    .hide-sm { display: none; }
+    .bento, .pipeline { grid-template-columns: 1fr; }
+    .bento .wide { grid-column: span 1; }
+    .step::after { display: none; }
+    .phone { width: 290px; height: 590px; transform: none; }
+    .fc-1 { left: 0; top: 40px; } .fc-2 { right: 0; }
+    section { padding-top: 88px; }
+    .stat { padding: 22px 18px; } .stat .n { font-size: 32px; }
+    .hero .ctas .btn { flex: 1 1 auto; justify-content: center; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .reveal { opacity: 1; transform: none; }
+    .transcript .w { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="mark" viewBox="80 160 355 196">
+      <g fill="none" stroke="#A78BFA" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+        <path stroke="#ECE8F6" d="M95 299 C111 283.5 124 265 138 263.5 C146.5 262.5 153.5 269 158 273.5 C162.5 269 169.5 262.5 178 263.5 C192 265 205 283.5 221 299 C206.5 329 185 340.5 158 340.5 C131 340.5 109.5 329 95 299 Z"/>
+        <path d="M95 299 C128 310.5 189.5 310.5 221 299 C227 297 229 287.5 235 287.5 C246.8 287.5 246.8 316.5 258.5 316.5 C270.5 316.5 270.5 269 282.5 269 C295.2 269 295.2 339.5 308 339.5 C320 339.5 320 265 332 265 C344 265 344 320.5 356 320.5 C368 320.5 368 285.5 380 285.5 C392 285.5 392 304 404 304 C411 304 411 298.5 418 298.5"/>
+        <path fill="#A78BFA" stroke="none" d="M364.8 165.8 C368.4 190 377.8 199.3 402 203 C377.8 206.7 368.4 216 364.8 240.2 C361.1 216 351.8 206.7 327.5 203 C351.8 199.3 361.1 190 364.8 165.8 Z"/>
+      </g>
+    </symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></symbol>
+    <symbol id="i-github" viewBox="0 0 24 24"><path fill="currentColor" d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.4-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></symbol>
+  </defs>
+</svg>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Murmur home"><svg><use href="#mark"/></svg>murmur</a>
+    <div class="nav-links">
+      <a class="hide-sm" href="#features">Features</a>
+      <a class="hide-sm" href="#privacy">Privacy</a>
+      <a class="hide-sm" href="#how">How it works</a>
+      <a class="btn btn-primary btn-sm" href="https://github.com/MohamedFarhan23/murmur/releases/latest">Download</a>
+    </div>
+  </div>
+</nav>
+
+<header id="top">
+  <div class="glow"></div>
+  <div class="grid-bg"></div>
+  <div class="wrap hero">
+    <div>
+      <span class="pill"><b>New</b> 0.2.0 with a home-screen widget</span>
+      <h1>Your voice, transcribed.<br><span class="grad">Nowhere but your phone.</span></h1>
+      <p class="lead">Murmur is live speech-to-text for Android that runs entirely on your device. No servers, no accounts, and no internet permission at all.</p>
+      <div class="ctas">
+        <a class="btn btn-primary" href="https://github.com/MohamedFarhan23/murmur/releases/latest"><svg><use href="#i-download"/></svg>Download for Android</a>
+        <a class="btn btn-ghost" href="https://github.com/MohamedFarhan23/murmur"><svg><use href="#i-github"/></svg>View source</a>
+      </div>
+      <div class="meta"><span>Free and open source</span><span>Works offline</span><span>Google Play coming soon</span></div>
+    </div>
+
+    <div class="phone-stage" aria-hidden="true">
+      <div class="float-card fc-1"><small>Internet permission</small><strong>None</strong></div>
+      <div class="float-card fc-2"><small>Speech model</small>16.9 MB, on-device</div>
+      <div class="phone">
+        <div class="screen">
+          <div class="notch"></div>
+          <div class="status"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="topbar"><svg class="mark"><use href="#mark"/></svg><span class="timer" id="timer">0:00</span></div>
+          <div class="transcript" id="transcript"></div>
+          <div class="bottom">
+            <div class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="mic-wrap">
+              <span class="ripple"></span><span class="ripple r2"></span>
+              <div class="mic"><svg style="color:#110E1C"><use href="#i-mic"/></svg></div>
+            </div>
+            <div class="hint">Listening… tap to stop</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="stats reveal">
+    <div class="stat"><div class="n">0</div><div class="l">Internet permissions</div></div>
+    <div class="stat"><div class="n">16.9<em>MB</em></div><div class="l">Speech model, built in</div></div>
+    <div class="stat"><div class="n">100<em>%</em></div><div class="l">On-device processing</div></div>
+    <div class="stat"><div class="n">MIT</div><div class="l">Open-source license</div></div>
+  </div>
+
+  <section id="features">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Features</div>
+      <h2>Small app. Surprisingly capable.</h2>
+      <p>Everything you need to turn speech into text you can use, without handing your voice to anyone.</p>
+    </div>
+    <div class="bento">
+      <div class="card c-4 wide reveal">
+        <div class="ic"><svg><use href="#i-mic"/></svg></div>
+        <h3>Tap any word to hear it or fix it</h3>
+        <p>Words the model wasn't sure about are underlined. Tap one to play just that moment of audio, and pick the right word from sound-alike suggestions.</p>
+        <div class="demo-words">Meet me at the <span class="u">cafe</span> by the station.</div>
+        <div class="sheet">
+          <span class="chip play"><svg viewBox="0 0 12 12"><path fill="currentColor" d="M2 1l9 5-9 5z"/></svg>Play</span>
+          <span class="chip sel">café</span><span class="chip">cave</span><span class="chip">calf</span>
+        </div>
+      </div>
+      <div class="card c-2 reveal">
+        <div class="ic"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M3 12h2M7 8v8M11 5v14M15 9v6M19 7v10"/></svg></div>
+        <h3>Live, as you speak</h3>
+        <p>Text appears while you talk. Tap to record, or hold to talk and let go to stop.</p>
+      </div>
+      <div class="card c-2 reveal">
+        <div class="ic"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 7V4h16v3M9 20h6M12 4v16"/></svg></div>
+        <h3>Custom words</h3>
+        <p>Teach it names and jargon, and it listens out for them from then on.</p>
+        <div class="words-cloud"><span>Farhan</span><span>Kubernetes</span><span>Priya</span></div>
+      </div>
+      <div class="card c-4 wide reveal">
+        <div class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg></div>
+        <h3>One tap from your home screen</h3>
+        <p>Add the widget, tap it and speak. Tap stop, and the text is on your clipboard and you're back where you were.</p>
+        <div class="widget-demo"><span class="dot"><svg style="color:#110E1C"><use href="#i-mic"/></svg></span>Transcribe</div>
+      </div>
+      <div class="card c-3 reveal">
+        <div class="ic"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5"/></svg></div>
+        <h3>Notes, kept locally</h3>
+        <p>Save a transcript as a note, with its audio if you want it. Your draft is kept safe until you do.</p>
+      </div>
+      <div class="card c-3 reveal">
+        <div class="ic"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13"/></svg></div>
+        <h3>Copy, share, done</h3>
+        <p>Send text to any app in one tap. Pinch the transcript to make it bigger or smaller.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="privacy">
+    <div class="privacy reveal">
+      <div>
+        <div class="eyebrow">Privacy</div>
+        <h2>Private by design, not by promise.</h2>
+        <p>Most voice apps send your audio to a server. Murmur can't: Android never gave it permission to use the internet. Your words are processed on your phone and stay there.</p>
+        <a class="text-link" href="privacy.html">Read the privacy policy →</a>
+      </div>
+      <ul class="checks">
+        <li><svg><use href="#i-check"/></svg><div><b>No internet permission</b><span>The only permission Murmur asks for is the microphone.</span></div></li>
+        <li><svg><use href="#i-check"/></svg><div><b>No accounts, ads or tracking</b><span>No analytics and no crash reporting. Nothing to sign up for.</span></div></li>
+        <li><svg><use href="#i-check"/></svg><div><b>Audio stays in memory</b><span>Recordings are only kept if you save a note and choose to keep its audio.</span></div></li>
+        <li><svg><use href="#i-check"/></svg><div><b>Open source</b><span>Don't take our word for it. Read every line on GitHub.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="sec-head reveal">
+      <div class="eyebrow">How it works</div>
+      <h2>From your voice to text, all on the phone.</h2>
+      <p>A small pipeline keeps the model fed with speech, and only speech.</p>
+    </div>
+    <div class="pipeline">
+      <div class="step reveal"><h3>Listen</h3><p>The microphone streams 16 kHz audio, held in memory only.</p></div>
+      <div class="step reveal"><h3>Filter</h3><p>A voice detector and a pitch check pass on real speech, so silence and rustling don't turn into words.</p></div>
+      <div class="step reveal"><h3>Transcribe</h3><p>Whistle, a 16.9 MB open speech model, runs on the Needle engine right on your phone.</p></div>
+      <div class="step reveal"><h3>Refine</h3><p>Your custom words guide the model, and unsure words are marked for you to check.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head reveal">
+      <div class="eyebrow">Honestly</div>
+      <h2>Is it perfect? No.</h2>
+      <p>Running entirely on a phone is a trade-off between staying light and getting every word right. Here's where Murmur stands today.</p>
+    </div>
+    <div class="honest">
+      <div class="card reveal"><h3>English only</h3><p>Other languages may come later.</p></div>
+      <div class="card reveal"><h3>Android only</h3><p>For 64-bit Android phones. Built with Flutter, so other platforms are possible.</p></div>
+      <div class="card reveal"><h3>It mishears sometimes</h3><p>Quiet speech and unusual names are hardest. That's what tap-to-fix and custom words are for.</p></div>
+    </div>
+  </section>
+
+  <div class="cta reveal">
+    <svg class="mark"><use href="#mark"/></svg>
+    <h2>Speak freely.</h2>
+    <p>Free, open source and fully offline. Download the APK from GitHub today. Google Play is coming soon.</p>
+    <div class="ctas">
+      <a class="btn btn-primary" href="https://github.com/MohamedFarhan23/murmur/releases/latest"><svg><use href="#i-download"/></svg>Download for Android</a>
+      <a class="btn btn-ghost" href="https://github.com/MohamedFarhan23/murmur"><svg><use href="#i-github"/></svg>Star on GitHub</a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>© 2026 Mohamed Farhan · MIT License<br>Speech model: <a href="https://huggingface.co/Cactus-Compute/whistle">Whistle</a> by Cactus Compute, on their Needle engine.</div>
+    <div class="links">
+      <a href="privacy.html">Privacy</a>
+      <a href="https://github.com/MohamedFarhan23/murmur">GitHub</a>
+      <a href="https://github.com/MohamedFarhan23/murmur/releases">Releases</a>
+      <a href="https://github.com/MohamedFarhan23/murmur/issues">Feedback</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Live transcript demo: words arrive dim (pending), then settle.
+  const phrases = [
+    [["Remind", 1], ["me", 1], ["to", 1], ["call", 1], ["Priya", 0.4], ["at", 1], ["six.", 1]],
+    [["The", 1], ["notes", 1], ["never", 1], ["leave", 1], ["this", 1], ["phone.", 1]],
+  ];
+  const box = document.getElementById('transcript');
+  const timer = document.getElementById('timer');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  let seconds = 0;
+  setInterval(() => { seconds = (seconds + 1) % 600; timer.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`; }, 1000);
+
+  function word([text, p]) {
+    const s = document.createElement('span');
+    s.className = 'w pending';
+    s.textContent = text + ' ';
+    s.dataset.unsure = p < 0.6 ? '1' : '';
+    return s;
+  }
+
+  async function run() {
+    if (reduce) {
+      phrases.flat().forEach(w => { const s = word(w); s.classList.add('on'); s.classList.remove('pending'); if (s.dataset.unsure) s.classList.add('unsure'); box.append(s); });
+      return;
+    }
+    const caret = document.createElement('span');
+    caret.className = 'caret';
+    for (;;) {
+      box.textContent = '';
+      box.append(caret);
+      for (const phrase of phrases) {
+        const spans = [];
+        for (const w of phrase) {
+          const s = word(w);
+          box.insertBefore(s, caret);
+          await sleep(30);
+          s.classList.add('on');
+          spans.push(s);
+          await sleep(260 + Math.random() * 180);
+        }
+        await sleep(500);
+        for (const s of spans) { s.classList.remove('pending'); if (s.dataset.unsure) s.classList.add('unsure'); }
+        await sleep(900);
+      }
+      await sleep(2600);
+    }
+  }
+  run();
+
+  // Reveal on scroll.
+  const io = new IntersectionObserver(entries => {
+    for (const e of entries) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+</script>
+</body>
+</html>
