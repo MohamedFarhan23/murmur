@@ -63,6 +63,23 @@ android {
         }
     }
 
+    // Package only the ABIs asked for with --target-platform. Plugins build
+    // native code for every ABI, and a stray library for an ABI that Flutter's
+    // engine wasn't built for would make a device pick that ABI and crash, or
+    // make Play offer the app to x86 devices Needle doesn't run on.
+    packaging {
+        jniLibs {
+            val abis = mapOf(
+                "android-arm" to "armeabi-v7a",
+                "android-arm64" to "arm64-v8a",
+                "android-x64" to "x86_64",
+            )
+            val targets = (project.findProperty("target-platform") as String?)
+                ?.split(",")?.mapNotNull { abis[it] } ?: abis.values.toList()
+            (abis.values + "x86" - targets.toSet()).forEach { excludes += "lib/$it/**" }
+        }
+    }
+
     buildTypes {
         release {
             // Without key.properties (e.g. a fresh clone), fall back to the
