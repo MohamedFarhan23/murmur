@@ -1,14 +1,9 @@
-<!-- Pre-Android 8 launcher icon: talking lips whose sound becomes a wave, with AI sparkles. -->
+<!-- Pre-Android 8 launcher icon: talking lips whose sound becomes a wave, with an AI sparkle. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="112" fill="#0F1012"/>
-  <!-- Centred on the lips and wave (y 288 after the inner translate), which carry
-       the visual weight; the sparkles sit above. -->
-  <g transform="translate(256 256) scale(0.85) translate(-260 -288)">
-  <g transform="translate(0 26)" fill="none" stroke="#D7FF3D" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M64 262 C86 240 104 214 124 212 C136 211 146 220 152 226 C158 220 168 211 180 212 C200 214 218 240 240 262 C220 304 190 320 152 320 C114 320 84 304 64 262 Z"/>
-    <path d="M64 262 C110 278 196 278 240 262 Q253 238 266 262 Q279 302 292 262 Q305 198 318 262 Q331 350 344 262 Q357 190 370 262 Q383 310 396 262 Q409 234 422 262 Q435 274 448 262"/>
-    <path fill="#D7FF3D" stroke="none" d="M400 88 C404 114 414 124 440 128 C414 132 404 142 400 168 C396 142 386 132 360 128 C386 124 396 114 400 88 Z"/>
-    <path fill="#D7FF3D" stroke="none" d="M452 164 C453.5 173 456 175.5 465 177 C456 178.5 453.5 181 452 190 C450.5 181 448 178.5 439 177 C448 175.5 450.5 173 452 164 Z"/>
-  </g>
+  <rect width="512" height="512" rx="112" fill="#110E1C"/>
+  <g fill="none" stroke="#A78BFA" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="#ECE8F6" d="M95 299 C111 283.5 124 265 138 263.5 C146.5 262.5 153.5 269 158 273.5 C162.5 269 169.5 262.5 178 263.5 C192 265 205 283.5 221 299 C206.5 329 185 340.5 158 340.5 C131 340.5 109.5 329 95 299 Z"/>
+    <path d="M95 299 C128 310.5 189.5 310.5 221 299 C227 297 229 287.5 235 287.5 C246.8 287.5 246.8 316.5 258.5 316.5 C270.5 316.5 270.5 269 282.5 269 C295.2 269 295.2 339.5 308 339.5 C320 339.5 320 265 332 265 C344 265 344 320.5 356 320.5 C368 320.5 368 285.5 380 285.5 C392 285.5 392 304 404 304 C411 304 411 298.5 418 298.5"/>
+    <path fill="#A78BFA" stroke="none" d="M364.8 165.8 C368.4 190 377.8 199.3 402 203 C377.8 206.7 368.4 216 364.8 240.2 C361.1 216 351.8 206.7 327.5 203 C351.8 199.3 361.1 190 364.8 165.8 Z"/>
   </g>
 </svg>

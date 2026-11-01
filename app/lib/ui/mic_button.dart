@@ -78,7 +78,7 @@ class _MicButtonState extends State<MicButton>
     return SizedBox.square(
       dimension: _size * 1.6,
       child: TweenAnimationBuilder<Color?>(
-        tween: ColorTween(end: recording ? Brand.red : Brand.lime),
+        tween: ColorTween(end: recording ? Brand.red : Brand.violet),
         duration: _morph,
         builder: (context, fill, _) => Stack(
           alignment: Alignment.center,
