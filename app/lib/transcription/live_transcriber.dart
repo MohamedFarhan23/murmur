@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 
 import '../audio/mic.dart';
 import '../audio/vad.dart';
+import '../audio/voicing.dart';
 import '../engine/whistle_engine.dart';
 import 'speech_gate.dart';
 import 'vocabulary.dart';
@@ -28,7 +29,10 @@ typedef Cleared = ({List<Word> words, List<Int16List> audio, int samples, bool d
 /// Streams microphone speech through Whistle and exposes the transcript as it
 /// forms: [words] are final, [pending] may still change.
 ///
-/// A VAD keeps silence away from the model. Each pause ends the stream, which
+/// A VAD keeps silence away from the model, and a phrase is only sent once it
+/// holds a sustained pitch, so noise the VAD mistakes for speech (handling
+/// the phone, rustling) doesn't make the model invent words such as "Thank
+/// you". Each pause ends the stream, which
 /// commits the phrase and keeps the engine's re-transcribed buffer short.
 /// Recording can be stopped and resumed; the transcript carries on until
 /// [clear]. The recording's audio is kept in memory only, so the user can
@@ -59,6 +63,8 @@ class LiveTranscriber extends ChangeNotifier {
   int _queuedSamples = 0;
   int _speechFrames = 0;
   int _phraseSamples = 0;
+  int _voicedRun = 0; // consecutive voiced frames, until the phrase is voiced
+  bool _phraseVoiced = false;
   double _phraseOffset = 0; // seconds into the recording the phrase starts
   StreamSubscription<Int16List>? _audio;
   // Engine calls run strictly one after another on this chain.
@@ -243,6 +249,12 @@ class LiveTranscriber extends ChangeNotifier {
     _phraseSamples += audio.length;
     _queued.add(audio);
     _queuedSamples += audio.length;
+    if (!_phraseVoiced) {
+      _voicedRun = isVoiced(audio) ? _voicedRun + 1 : 0;
+      if (_voicedRun < _voicedFrames) return; // held until it's voiced
+      _phraseVoiced = true;
+      _log(() => 'phrase voiced at ${_at()}');
+    }
     // Whistle takes live audio about one second at a time.
     if (_queuedSamples >= WhistleEngine.sampleRate) _sendQueued();
   }
@@ -252,6 +264,15 @@ class LiveTranscriber extends ChangeNotifier {
         '${_speechFrames * 30} ms speech frames since last phrase');
     _phraseSamples = 0;
     _speechFrames = 0;
+    _voicedRun = 0;
+    if (!_phraseVoiced) {
+      // Noise, not a voice: none of it reached the engine, so drop it.
+      _log(() => 'phrase dropped: never voiced');
+      _queued.clear();
+      _queuedSamples = 0;
+      return;
+    }
+    _phraseVoiced = false;
     if (_queuedSamples > 0) _sendQueued();
     final offset = _phraseOffset;
     _work = _work.then((_) async {
@@ -323,6 +344,9 @@ class LiveTranscriber extends ChangeNotifier {
     }
     return out;
   }
+
+  /// Consecutive voiced 30 ms frames that confirm a phrase is a voice.
+  static const _voicedFrames = 3;
 
   String _at() => '${seconds.toStringAsFixed(2)}s';
 
